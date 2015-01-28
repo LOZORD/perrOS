@@ -1,7 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define MAX 10
+#define MAX   10
+#define DEBUG  0
 
 typedef struct table
 {
@@ -12,8 +13,6 @@ typedef struct table
 int * at (Table * t, int x, int y);
 void fill (Table * t);
 void printTable (Table * t);
-
-int DEBUG = 1;
 
 int main (int argc, char ** argv)
 {
@@ -43,43 +42,62 @@ int main (int argc, char ** argv)
     }
   }
 
-  DEBUG &&= printf("Using dimension %d\n", dim);
+  #if DEBUG
+  printf("Using dimension %d\n", dim);
+  #endif
 
   table.dimension = dim;
 
   //TODO check return val
   table.entries = malloc(sizeof(int) * dim * dim);
 
-  DEBUG &&= printf("Filling table\n");
+  #if DEBUG
+  printf("Filling table\n");
+  #endif
 
   fill(&table);
 
-  DEBUG &&= printf("Printing table\n");
+  #if DEBUG
+  printf("Printing table\n");
+  #endif
 
   printTable(&table);
 
-  DEBUG &&= printf("Freeing entries\n");
+  #if DEBUG
+  printf("Freeing entries\n");
+  #endif
 
   free(table.entries);
 
-  DEBUG &&= printf("Done\n\n");
+  #if DEBUG
+  printf("Done\n\n");
+  #endif
 
   return EXIT_SUCCESS;
 }
 
 void fill (Table * table)
 {
-  int i, j;
-  int * temp;
+  int i, j, val;
+  int * loc;
 
-  for (i = 1; i <= table->dimension; i++)
+  for (i = 0; i < table->dimension; i++)
   {
-    for (j = 1; j <= table->dimension; j++)
+    for (j = 0; j < table->dimension; j++)
     {
-      DEBUG &&= printf("i is %d, j is %d\n", i, j);
-      temp = at(table, i - 1, j - 1);
-      DEBUG &&= printf("temp is %p\n", temp);
-      (*temp) = i * j;
+      val = (i + 1) * (j + 1);
+      #if DEBUG
+      printf("i is %d, j is %d", i, j);
+      printf("\tval is %d\n", val);
+      #endif
+
+      loc = at(table, i , j);
+
+      #if DEBUG
+      printf("loc is %p\n", loc);
+      #endif
+
+      (*loc) = (i + 1) * (j + 1);
     }
   }
 }
@@ -101,6 +119,7 @@ void printTable (Table * table)
 
 int * at (Table * table, int i, int j)
 {
+  //TODO refactor
   //int * ets = (void *)table->entries;
   //int d = table->dimension;
   //return (ets+j) * (d + i);
