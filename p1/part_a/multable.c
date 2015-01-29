@@ -117,7 +117,8 @@ void printTable (Table * table)
       val = *(at(table, i, j));
       printf("%d\t", val);
     }
-    printf("\n\t");
+    //printf("\n\t");
+    printf("\n");
   }
 }
 
