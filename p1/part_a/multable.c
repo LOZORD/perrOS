@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define MAX   10
 #define DEBUG  0
+#define MAX   10
 
 typedef struct table
 {
@@ -16,8 +16,7 @@ void printTable (Table * t);
 
 int main (int argc, char ** argv)
 {
-  int dim;
-  int temp;
+  int dim, temp;
   Table table;
 
   if (argc < 2)
@@ -48,8 +47,12 @@ int main (int argc, char ** argv)
 
   table.dimension = dim;
 
-  //TODO check return val
   table.entries = malloc(sizeof(int) * dim * dim);
+
+  if (table.entries == NULL)
+  {
+    fprintf(stderr, "ERROR: Could not allocate memory for multable\n");
+  }
 
   #if DEBUG
   printf("Filling table\n");
@@ -86,6 +89,7 @@ void fill (Table * table)
     for (j = 0; j < table->dimension; j++)
     {
       val = (i + 1) * (j + 1);
+
       #if DEBUG
       printf("i is %d, j is %d", i, j);
       printf("\tval is %d\n", val);
@@ -111,18 +115,23 @@ void printTable (Table * table)
     for (j = 0; j < table->dimension; j++)
     {
       val = *(at(table, i, j));
-      printf("%d ", val);
+      printf("%d\t", val);
     }
-    printf("\n");
+    printf("\n\t");
   }
 }
 
+//T + y * D + x
 int * at (Table * table, int i, int j)
 {
+  /*
   //TODO refactor
   //int * ets = (void *)table->entries;
   //int d = table->dimension;
   //return (ets+j) * (d + i);
   //TODO refactor 8|
-  return table->entries + ((i * table->dimension) + j); //returns the pointer
+  */
+
+  //return table->entries + ((i * table->dimension) + j); //returns the pointer
+  return table->entries + (j * table->dimension) + i;
 }
