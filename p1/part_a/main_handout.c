@@ -53,7 +53,7 @@ int main(int argc, char * argv[])
 
     while(keyItr)
     {
-      keyInd = charPtrToInt(keyItr);
+      keyInd = charToInt(keyItr[0]);
 
       //TODO keyInd in bounds?
 
@@ -65,9 +65,9 @@ int main(int argc, char * argv[])
       }
 
       // get the next char in the word
-      if (keyItr + 1)
+      if (keyItr[1])
       {
-        letterInd = charPtrToInt(keyItr + 1);
+        letterInd = charPtrToInt(keyItr[1]);
       }
       else
       {
