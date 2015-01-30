@@ -7,24 +7,31 @@
 /* This is an array of 10 POINTERS to KeyboardElements
 */
 
+// our dummy printer function (used as a tester)
+void PrintFunction (char c);
+
 KEPtr keypad[10];
 char * letters[10] = { "", "ABC", "DEF", "GHI", "JKL", "MNO", "PQRS", "TUV", "WXYZ", "" };
 
-
 int main(int argc, char * argv[])
 {
-	if (argc <= 1)
-	{
-		printf("Usage: p1a2 string1 [stringN]\n");
-		exit(1);
-	}
+  if (argc <= 1)
+  {
+    printf("Usage: p1a2 string1 [stringN]\n");
+    exit(1);
+  }
 
-	// YOUR CODE HERE
+  // YOUR CODE HERE
 
-	return 0;
+  // TODO
+
+  // pass our print function to PrintWrapper
+  PrintWrapper(PrintFunction, argv[1][0]);
+
+  return 0;
 }
 
 void PrintFunction(char c)
 {
-	printf("%c", c);
+  printf("%c\n", c);
 }
