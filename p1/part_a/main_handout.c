@@ -18,6 +18,8 @@ void destroyKeypad (KEPtr ptrArr [NUM_KEYS]);
 void padPrinter (char c);
 // our dummy printer function (used as a tester)
 void PrintFunction (char c);
+int charToInt (char c);
+int charPtrToInt (char * c);
 
 /*
  * A very janky solution
@@ -45,20 +47,19 @@ int main(int argc, char * argv[])
   char someLetter;
 
   //iterate through the arguments ("key"words)
-
-  for (i = 2; i < argc; i++)
+  for (i = 1; i < argc; i++)
   {
     keyItr = argv[i];
 
     while(keyItr)
     {
-      //atoi or strtol? TODO
-      keyInd = atoi(keyItr);
+      keyInd = charPtrToInt(keyItr);
 
       //TODO keyInd in bounds?
 
       if (keyInd < 2 || keyInd > 9)
       {
+        //TODO see updated spec
         fprintf(stderr, "bad input");
         break;
       }
@@ -66,7 +67,7 @@ int main(int argc, char * argv[])
       // get the next char in the word
       if (keyItr + 1)
       {
-        letterInd = atoi(keyItr + 1);
+        letterInd = charPtrToInt(keyItr + 1);
       }
       else
       {
@@ -79,7 +80,8 @@ int main(int argc, char * argv[])
       fprintf(stderr,"%c", someLetter);
 
       keypad[keyInd]->counter += 1;
-      keypad[keyInd]->letters = NULL; //wat do with "letters"?
+      //the letters that this key "contains"
+      keypad[keyInd]->letters = letters[i];
 
       // advance two chars at a time
       keyItr += 2;
@@ -132,4 +134,14 @@ void destroyKeypad (KEPtr pad [NUM_KEYS])
   {
     free(pad[keyItr]);
   }
+}
+
+int charToInt (char c)
+{
+  return (int)(c - '0');
+}
+
+int charPtrToInt (char * c)
+{
+  return charToInt(*c);
 }
