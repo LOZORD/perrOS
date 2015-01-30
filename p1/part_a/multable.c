@@ -135,7 +135,7 @@ void fill (Table * table)
       printf("loc is %p\n", loc);
       #endif
 
-      (*loc) = (i + 1) * (j + 1);
+      (*loc) = val;
     }
   }
 }
@@ -153,6 +153,7 @@ void printTable (Table * table)
     for (j = 0; j < table->dimension; j++)
     {
       val = *(at(table, i, j));
+
       printf("%d\t", val);
     }
     printf("\n");
