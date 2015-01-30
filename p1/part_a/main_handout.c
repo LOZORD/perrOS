@@ -19,6 +19,16 @@ void padPrinter (char c);
 // our dummy printer function (used as a tester)
 void PrintFunction (char c);
 
+/*
+ * A very janky solution
+char * globalItr = NULL;
+
+char iterateThroughStr (char * str)
+{
+  return str[globalItr++];
+}
+*/
+
 int main(int argc, char * argv[])
 {
   if (argc <= 1)
@@ -94,13 +104,14 @@ void PrintFunction(char c)
   printf("%c\n", c);
 }
 
+/* alternative: do pad = malloc(NUM_KEYS * sizeof(struct KeyboardElement)) */
 void initKeypad (KEPtr pad [NUM_KEYS])
 {
   int keyItr;
   for (keyItr = 0; keyItr < NUM_KEYS; keyItr++)
   {
     //FIXME what kind of data structure do we want to malloc?
-    pad[keyItr] = malloc(sizeof(struct KeyboardElement));
+    pad[keyItr] = (KEPtr) malloc(sizeof(struct KeyboardElement));
 
     if (pad[keyItr] == NULL)
     {

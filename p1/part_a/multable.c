@@ -163,8 +163,8 @@ void printTable (Table * table)
 /* at (Table * t, int i, int j)
  * Provides an abstraction of a 2d grid for t's 1d entry array.
  *    TODO check the math below...
- * If t->entries was a 2d array, this function would be equivalent to &(t[i][j]).
- * The following calculation is used to return a pointer to the int at t[i][j].
+ * If t->entries was a 2d array, this function would be equivalent to &(t{i}{j}).
+ * The following calculation is used to return a pointer to the int at t{i}{j}.
  * t->entries + (j * t->dim) + i (a simulated 2d grid)
  *
  * This function checks whether the given i and j are valid,
