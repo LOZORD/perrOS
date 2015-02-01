@@ -20,16 +20,8 @@ void padPrinter (char c);
 void PrintFunction (char c);
 int charToInt (char c);
 int charPtrToInt (char * c);
-
-/*
- * A very janky solution
-char * globalItr = NULL;
-
-char iterateThroughStr (char * str)
-{
-  return str[globalItr++];
-}
-*/
+KEPtr getKey(int i);
+char getIndexedLetterFromKey(KEPtr kP, int i);
 
 int main(int argc, char * argv[])
 {
@@ -49,6 +41,7 @@ int main(int argc, char * argv[])
   //iterate through the arguments ("key"words)
   for (i = 1; i < argc; i++)
   {
+    printf("in loop\n");
     keyItr = argv[i];
 
     while(keyItr)
@@ -67,21 +60,22 @@ int main(int argc, char * argv[])
       // get the next char in the word
       if (keyItr[1])
       {
-        letterInd = charPtrToInt(keyItr[1]);
+        letterInd = charToInt(keyItr[1]);
       }
       else
       {
         fprintf(stderr, "even words pls");
       }
 
-      someLetter = letters[keyInd][letterInd];
+      printf("Got keyInd: %d\tGot letterInd: %d\n", keyInd, letterInd);
+
+      // account for human indexing (from 1)
+      someLetter = (keypad[keyInd - 1])->letters[letterInd - 1];
       //PrintWrapper(PrintFunction, someLetter);
       //TODO print
-      fprintf(stderr,"%c", someLetter);
+      printf("%c\n", someLetter);
 
       keypad[keyInd]->counter += 1;
-      //the letters that this key "contains"
-      keypad[keyInd]->letters = letters[i];
 
       // advance two chars at a time
       keyItr += 2;
@@ -112,7 +106,6 @@ void initKeypad (KEPtr pad [NUM_KEYS])
   int keyItr;
   for (keyItr = 0; keyItr < NUM_KEYS; keyItr++)
   {
-    //FIXME what kind of data structure do we want to malloc?
     pad[keyItr] = (KEPtr) malloc(sizeof(struct KeyboardElement));
 
     if (pad[keyItr] == NULL)
@@ -122,7 +115,7 @@ void initKeypad (KEPtr pad [NUM_KEYS])
     }
 
     pad[keyItr]->counter = 0;
-    pad[keyItr]->letters = NULL;
+    pad[keyItr]->letters = letters[keyItr];
   }
 }
 
