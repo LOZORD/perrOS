@@ -20,8 +20,8 @@ void padPrinter (char c);
 void PrintFunction (char c);
 int charToInt (char c);
 int charPtrToInt (char * c);
-KEPtr getKey(int i);
-char getIndexedLetterFromKey(KEPtr kP, int i);
+KEPtr getHumanIndexedKey(int i);
+char * getHumanIndexedLetterFromKey(KEPtr kP, int i);
 
 int main(int argc, char * argv[])
 {
@@ -36,7 +36,8 @@ int main(int argc, char * argv[])
 
   int keyInd, letterInd, i;
   char * keyItr;
-  char someLetter;
+  char * someLetterPtr;
+  KEPtr myKey;
 
   //iterate through the arguments ("key"words)
   for (i = 1; i < argc; i++)
@@ -44,16 +45,14 @@ int main(int argc, char * argv[])
     printf("in loop\n");
     keyItr = argv[i];
 
-    while(keyItr)
+    while(keyItr != NULL)
     {
       keyInd = charToInt(keyItr[0]);
 
-      //TODO keyInd in bounds?
+      myKey = getHumanIndexedKey(keyInd);
 
-      if (keyInd < 2 || keyInd > 9)
+      if (myKey == NULL)
       {
-        //TODO see updated spec
-        fprintf(stderr, "bad input");
         break;
       }
 
@@ -69,13 +68,20 @@ int main(int argc, char * argv[])
 
       printf("Got keyInd: %d\tGot letterInd: %d\n", keyInd, letterInd);
 
-      // account for human indexing (from 1)
-      someLetter = (keypad[keyInd - 1])->letters[letterInd - 1];
+      someLetterPtr = getHumanIndexedLetterFromKey(myKey, letterInd);
+
+      if (someLetterPtr == NULL)
+      {
+        fprintf(stderr,"oops\n");
+        exit(EXIT_FAILURE);
+      }
+
+
       //PrintWrapper(PrintFunction, someLetter);
       //TODO print
-      printf("%c\n", someLetter);
+      printf("%c\n", *someLetterPtr);
 
-      keypad[keyInd]->counter += 1;
+      myKey->counter += 1;
 
       // advance two chars at a time
       keyItr += 2;
@@ -137,4 +143,39 @@ int charToInt (char c)
 int charPtrToInt (char * c)
 {
   return charToInt(*c);
+}
+
+KEPtr getHumanIndexedKey (int i)
+{
+  //only allow numbers human indices 2-9
+  //TODO: allow human keys 1 and 10? (letterless keys?)
+  if (2 <= i && i <= 9)
+  {
+    return keypad[i - 1];
+  }
+  else
+  {
+    return NULL;
+  }
+}
+
+char * getHumanIndexedLetterFromKey(KEPtr kP, int i)
+{
+  char * itr;
+  i -= 1;
+
+  if (kP == NULL || i < 0)
+  {
+    return NULL;
+  }
+
+  itr = kP->letters;
+
+  while (i && itr)
+  {
+    i--;
+    itr++;
+  }
+
+  return itr;
 }
