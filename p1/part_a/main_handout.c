@@ -23,6 +23,8 @@ int charPtrToInt (char * c);
 KEPtr getHumanIndexedKey(int i);
 char * getHumanIndexedLetterFromKey(KEPtr kP, int i);
 
+//TODO test: ./tnine 223231 232181 234R
+
 int main(int argc, char * argv[])
 {
   if (argc <= 1)
@@ -53,6 +55,7 @@ int main(int argc, char * argv[])
 
       if (myKey == NULL)
       {
+        putchar('-');
         break;
       }
 
@@ -63,7 +66,9 @@ int main(int argc, char * argv[])
       }
       else
       {
-        fprintf(stderr, "even words pls");
+        putchar('-');
+        break;
+        //fprintf(stderr, "even words pls");
       }
 
       //printf("Got keyInd: %d\tGot letterInd: %d\n", keyInd, letterInd);
@@ -72,14 +77,17 @@ int main(int argc, char * argv[])
 
       if (someLetterPtr == NULL)
       {
-        fprintf(stderr,"oops\n");
-        exit(EXIT_FAILURE);
+        //fprintf(stderr,"oops\n");
+        //exit(EXIT_FAILURE);
+        putchar('-');
+        break;
       }
 
 
       //PrintWrapper(PrintFunction, someLetter);
       //TODO print
-      printf("%c", *someLetterPtr);
+      //printf("%c", *someLetterPtr);
+      putchar(*someLetterPtr);
 
       myKey->counter += 1;
 
@@ -89,7 +97,7 @@ int main(int argc, char * argv[])
     }
     //PrintWrapper(PrintFunction, '\n');
     //TODO print
-    printf("\n");
+    putchar('\n');
   }
 
   // TODO
@@ -168,6 +176,7 @@ KEPtr getHumanIndexedKey (int i)
 
 char * getHumanIndexedLetterFromKey(KEPtr kP, int i)
 {
+  //printf("\tGOT kP with letters [%s], i with val %d\n", kP->letters, i);
   char * itr;
   i -= 1;
 
@@ -178,7 +187,7 @@ char * getHumanIndexedLetterFromKey(KEPtr kP, int i)
 
   itr = kP->letters;
 
-  while (i && itr)
+  while (i && itr && *itr)
   {
     i--;
     itr++;
