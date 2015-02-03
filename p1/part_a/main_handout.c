@@ -42,10 +42,10 @@ int main(int argc, char * argv[])
   //iterate through the arguments ("key"words)
   for (i = 1; i < argc; i++)
   {
-    printf("in loop\n");
+    //printf("in loop\n");
     keyItr = argv[i];
 
-    while(keyItr != NULL)
+    while(keyItr != NULL && keyItr[0] != '\0')
     {
       keyInd = charToInt(keyItr[0]);
 
@@ -66,7 +66,7 @@ int main(int argc, char * argv[])
         fprintf(stderr, "even words pls");
       }
 
-      printf("Got keyInd: %d\tGot letterInd: %d\n", keyInd, letterInd);
+      //printf("Got keyInd: %d\tGot letterInd: %d\n", keyInd, letterInd);
 
       someLetterPtr = getHumanIndexedLetterFromKey(myKey, letterInd);
 
@@ -79,7 +79,7 @@ int main(int argc, char * argv[])
 
       //PrintWrapper(PrintFunction, someLetter);
       //TODO print
-      printf("%c\n", *someLetterPtr);
+      printf("%c", *someLetterPtr);
 
       myKey->counter += 1;
 
@@ -89,13 +89,20 @@ int main(int argc, char * argv[])
     }
     //PrintWrapper(PrintFunction, '\n');
     //TODO print
-    fprintf(stderr,"\n");
+    printf("\n");
   }
 
   // TODO
 
   // pass our print function to PrintWrapper
-  PrintWrapper(PrintFunction, argv[1][0]);
+  //PrintWrapper(PrintFunction, argv[1][0]);
+  //int a;
+  int foo;
+
+  for (foo = 1; foo < NUM_KEYS - 1; foo++)
+  {
+    printf("%d\t%d\n", foo + 1, keypad[foo]->counter);
+  }
 
   destroyKeypad(keypad);
   return 0;
