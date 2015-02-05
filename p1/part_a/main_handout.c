@@ -8,6 +8,7 @@
 */
 
 #define NUM_KEYS 10
+#define TERM_CHAR '\0'
 
 //array of pointers!
 KEPtr keypad[NUM_KEYS];
@@ -22,6 +23,7 @@ int charToInt (char c);
 int charPtrToInt (char * c);
 KEPtr getHumanIndexedKey(int i);
 char * getHumanIndexedLetterFromKey(KEPtr kP, int i);
+int isValid (char * c);
 
 //TODO test: ./tnine 223231 232181 234R
 
@@ -47,7 +49,7 @@ int main(int argc, char * argv[])
     //printf("in loop\n");
     keyItr = argv[i];
 
-    while(keyItr != NULL && keyItr[0] != '\0')
+    while(isValid(keyItr))
     {
       keyInd = charToInt(keyItr[0]);
 
@@ -75,7 +77,9 @@ int main(int argc, char * argv[])
 
       someLetterPtr = getHumanIndexedLetterFromKey(myKey, letterInd);
 
-      if (someLetterPtr == NULL)
+      //FIXME: out of range letter index
+      //if (someLetterPtr == NULL || *someLetterPtr == '\0')
+      if (isValid(someLetterPtr))
       {
         //fprintf(stderr,"oops\n");
         //exit(EXIT_FAILURE);
@@ -99,8 +103,6 @@ int main(int argc, char * argv[])
     //TODO print
     putchar('\n');
   }
-
-  // TODO
 
   // pass our print function to PrintWrapper
   //PrintWrapper(PrintFunction, argv[1][0]);
@@ -193,5 +195,10 @@ char * getHumanIndexedLetterFromKey(KEPtr kP, int i)
     itr++;
   }
 
-  return itr;
+  return isValid(itr) ? itr : NULL;
+}
+
+int isValid (char * ptr)
+{
+  return (ptr != NULL) && (*ptr != TERM_CHAR);
 }

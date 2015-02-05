@@ -9,7 +9,9 @@ tnine: p1a2.h printwrapper.o main_handout.c
 clean:
 	rm multable tnine
 
+VAR = ""
+
 val-m: multable
-	valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes ./multable
+	valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes ./multable $(VAR)
 val-t: tnine
-	valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes ./tnine
+	valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes ./tnine $(VAR)
