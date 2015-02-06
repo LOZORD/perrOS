@@ -170,8 +170,7 @@ int charToInt (char c)
 
 KEPtr getHumanIndexedKey (int i)
 {
-  //only allow numbers human indices 2-9
-  //TODO: allow human keys 1 and 10? (letterless keys?)
+  //only allow numbers human indices 2-9 (1 and 0 are not allowed)
   if (2 <= i && i <= 9)
   {
     return keypad[i - 1];

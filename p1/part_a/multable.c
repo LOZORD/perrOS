@@ -39,24 +39,28 @@ int main (int argc, char ** argv)
   printf("Initializing the table\n");
   #endif
 
+  //first initialize the table
   initTable(&table, dim);
 
   #if DEBUG
   printf("Filling table\n");
   #endif
 
+  //fill the table with the products
   fill(&table);
 
   #if DEBUG
   printf("Printing table\n");
   #endif
 
+  //then print the entries of the table
   printTable(&table);
 
   #if DEBUG
   printf("Destroying the table\n");
   #endif
 
+  //then destroy the table
   destroyTable(&table);
 
   #if DEBUG
