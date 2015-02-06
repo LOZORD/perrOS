@@ -9,6 +9,9 @@ tnine: p1a2.h printwrapper.o main_handout.c
 clean:
 	rm multable tnine
 
+test-t9: tnine
+	python /u/c/s/cs537-1/testing/p1a/tnine/KeyPadTest.pyc .
+
 VAR = ""
 
 val-m: multable

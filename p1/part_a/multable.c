@@ -1,3 +1,7 @@
+/***** MULTABLE PROGRAM *****
+ * Written by Leo Rudberg in 2015
+ * P1A1 for CS 537 : Operating Systems
+ */
 #include <stdlib.h>
 #include <stdio.h>
 
