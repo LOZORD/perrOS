@@ -12,6 +12,9 @@ clean:
 test-t9: tnine
 	python /u/c/s/cs537-1/testing/p1a/tnine/KeyPadTest.pyc .
 
+test-mt: multable
+	python ~cs537-1/testing/p1a/multable/MulttableTest.pyc .
+
 VAR = ""
 
 val-m: multable
