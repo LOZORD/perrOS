@@ -1,4 +1,4 @@
-/***** MULTABLE PROGRAM *****
+/***** MULTABLE *****
  * Written by Leo Rudberg in 2015
  * P1A1 for CS 537 : Operating Systems
  */
@@ -32,6 +32,7 @@ int main (int argc, char ** argv)
   }
   else
   {
+    //use the first non-program argument as the size to (possibly) use
     dim = atoi(*(argv + 1));
   }
 
@@ -79,11 +80,7 @@ int main (int argc, char ** argv)
 void initTable (Table * table, int dim)
 {
   // any out of bounds dim argument gets set to MAX
-  if (dim > MAX)
-  {
-    dim = MAX;
-  }
-  else if (dim < 1)
+  if (dim > MAX || dim < 1)
   {
     dim = MAX;
   }
