@@ -1,4 +1,4 @@
-/***** TNINE PROGRAM *****
+/***** TNINE *****
  * Written by Leo Rudberg in 2015
  * P1A2 for CS 537 : Operating Systems
  */
@@ -17,10 +17,8 @@ KEPtr keypad[NUM_KEYS];
 /* Letters that are associated with each key */
 char * letters[NUM_KEYS] = { "", "ABC", "DEF", "GHI", "JKL", "MNO", "PQRS", "TUV", "WXYZ", "" };
 
-/* TODO comment */
 void initKeypad (KEPtr ptrArr [NUM_KEYS]);
 void destroyKeypad (KEPtr ptrArr [NUM_KEYS]);
-void padPrinter (char c);
 // our dummy printer function (used as a tester)
 int charToInt (char c);
 KEPtr getHumanIndexedKey(int i);
@@ -30,8 +28,6 @@ void printErrorDash ();
 void printCharWithWrapper (char c);
 void printStringWithWrapper (char * c);
 char * writeDecimalIntToBuffer(int i, char * c);
-
-//TODO test: ./tnine 223231 232181 234R
 
 int main(int argc, char * argv[])
 {
@@ -65,7 +61,7 @@ int main(int argc, char * argv[])
         break;
       }
 
-      // get the next char in the word
+      //attempt to get the letter index from the word argument
       if (isValid(keyItr + 1))
       {
         letterInd = charToInt(keyItr[1]);
@@ -99,8 +95,9 @@ int main(int argc, char * argv[])
     printCharWithWrapper('\n');
   }
 
-  //for writing strings of integers into
-  //integers should not be larger than about 10 chars in length
+  //for representing integers as strings
+  //integers should not be larger than about 32 chars in length
+  //this buffer is stack allocated -- we don't need to free it
   char buff [33];
 
   #if DEBUG
@@ -112,11 +109,19 @@ int main(int argc, char * argv[])
     #if DEBUG
     printf("i is %d\n",i);
     #endif
+
+    //print the key number (human indexing)
     writeDecimalIntToBuffer(i + 1, buff);
     printStringWithWrapper(buff);
+
+    //tabs between columns
     printCharWithWrapper('\t');
+
+    //print the key press count
     writeDecimalIntToBuffer(keypad[i]->counter, buff);
     printStringWithWrapper(buff);
+
+    //finally, print a new line
     printCharWithWrapper('\n');
   }
 
@@ -142,7 +147,7 @@ void initKeypad (KEPtr pad [NUM_KEYS])
 
     if (pad[keyItr] == NULL)
     {
-      fprintf(stderr, "Unsuccessful malloc\n");
+      fprintf(stderr, "ERROR: Could not allocate keypad memory\n");
       exit(EXIT_FAILURE);
     }
 
@@ -189,6 +194,7 @@ char * getHumanIndexedLetterFromKey(KEPtr kP, int i)
 
   char * itr;
 
+  //human indexing -> computer indexing
   i -= 1;
 
   if (kP == NULL || i < 0)
@@ -204,6 +210,7 @@ char * getHumanIndexedLetterFromKey(KEPtr kP, int i)
     itr++;
   }
 
+  //if itr or its value are bad, return null
   return isValid(itr) ? itr : NULL;
 }
 
@@ -240,7 +247,7 @@ char * writeDecimalIntToBuffer (int i, char * buff)
 {
   if (sprintf(buff, "%d", i) <= 0)
   {
-    fprintf(stderr, "Buffer error");
+    fprintf(stderr, "ERROR: Could not write integer to buffer\n");
     exit(EXIT_FAILURE);
   }
   else
