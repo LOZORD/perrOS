@@ -6,4 +6,20 @@ CSL-ID:
 (Do NOT suffix your CSL IDs with @cs.wisc.edu, the ID alone is sufficient)
 
 Implementation Details:
-<TODO>
+
+P1A (Multable & Tnine)
+
+These programs were pretty routine in implementation. Clearly the two most
+advanced things I had to do were the pointer arithmetic in Multable and the
+function pointer calls in Tnine.
+
+However, I abstracted these into functions so that they were nice to work with.
+For example, I wrote `at` in Multable and several printer functions in Tnine
+(where different forms take a variety of arguments).
+
+Other than that, the programming was fairly easy. As you can see in my code, I
+have a lot of print statements for debugging. However, I can optionally leave
+these out via the DEBUG preprocessor value found in each file.
+
+In my Makefile, I incorporated the Python tests, as well as Valgrind tests for
+each program. I used Valgrind to test for potential memory leaks.
