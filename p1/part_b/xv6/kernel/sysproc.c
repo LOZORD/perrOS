@@ -90,3 +90,33 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int sys_getprocs(void)
+{
+  //TODO count the number of non-unused procs in the proc table
+  //TODO lock the table
+  //extern struct ptable;
+  //cprintf("\t-->%p\n", ptable);
+  /*
+   * struct proc * itr = ptable->proc;
+   * int count = 0;
+   *
+   * while(itr && *itr)
+   * {
+   *   if (itr->state != UNUSED)
+   *   {
+   *     count++;
+   *   }
+   *
+   *   itr++;
+   * }
+   *
+   * return count;
+   *
+   *
+   *
+   *
+    acquire(&ptable.lock); and then unlock the table
+   */
+  return -1;
+}

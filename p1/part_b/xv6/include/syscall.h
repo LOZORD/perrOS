@@ -19,9 +19,10 @@
 #define SYS_mkdir  15
 #define SYS_chdir  16
 #define SYS_dup    17
-#define SYS_getpid 18 //TODO will have to change this
+#define SYS_getpid 18
 #define SYS_sbrk   19
 #define SYS_sleep  20
 #define SYS_uptime 21
+#define SYS_getprocs  22
 
 #endif // _SYSCALL_H_
