@@ -91,6 +91,7 @@ sys_uptime(void)
   return xticks;
 }
 
+//XXX HOW DO I GET TO THE ANON STRUCT PTABLE XXX
 int sys_getprocs(void)
 {
   //TODO count the number of non-unused procs in the proc table
@@ -118,5 +119,6 @@ int sys_getprocs(void)
    *
     acquire(&ptable.lock); and then unlock the table
    */
-  return -1;
+  //return -1;
+  return proc_getprocs();
 }

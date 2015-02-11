@@ -83,4 +83,7 @@ struct proc {
 //   fixed-size stack
 //   expandable heap
 
+//Added call for P1B
+int proc_getprocs (void);
+
 #endif // _PROC_H_

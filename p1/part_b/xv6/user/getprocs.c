@@ -9,6 +9,8 @@ main(int argc, char **argv)
 
   i = getprocs();
 
+  //TODO probably have to use trap()
+
   printf("got getprocs return val: %d\n", i);
 
   exit();
