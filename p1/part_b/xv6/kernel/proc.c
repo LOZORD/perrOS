@@ -460,6 +460,7 @@ int proc_getprocs(void)
     return -1;
   }
 
+  //we only allow for NPROC (should be 64) processes in our table
   for(itr = ptable.proc; itr < &ptable.proc[NPROC]; itr++)
   {
     if (itr->state == EMBRYO    ||
@@ -505,7 +506,8 @@ int proc_getprocs(void)
   //we should have `init`, `sh`, and this caller's proc running
   if (foundInit &&
       foundSh &&
-      (count > 2)
+      (count > 2) &&
+      (count <= NPROC)
      )
   {
     return count;
