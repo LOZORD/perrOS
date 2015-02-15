@@ -9,4 +9,13 @@ Implementation Details:
 
 P1B - getprocs
 
-TODO
+For this project, I followed Perry's (my prof's) advice about using getpid as a
+basis for which to model getprocs. I added a sys_getprocs function and included
+it in the syscalls array. All sys_getprocs does is call a function called
+proc_getprocs in kernel/proc.c, which does all of the computational work.
+
+I wrote a simple test program (user/test_getprocs.c) that prints the
+user-accessible getprocs function's return value.
+
+To run this test program, just run `make qemu-nox`, then once inside the
+emulator, run `test_getprocs`.
