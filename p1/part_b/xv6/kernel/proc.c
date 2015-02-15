@@ -466,7 +466,9 @@ int proc_getprocs(void)
        )
     {
       //valid process in our table, so increment the count
+      ////TODO check that init is always running ETC @96
       count++;
+      cprintf("-->%s\n", itr->name);
     }
     else if (itr->state == UNUSED)
     {
