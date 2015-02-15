@@ -6,6 +6,8 @@
 #include "proc.h"
 #include "spinlock.h"
 
+#define STR_MATCH 0
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -447,8 +449,10 @@ procdump(void)
 int proc_getprocs(void)
 {
   struct proc * itr;
-  int count = 0;
+  int count, foundInit, foundSh;
+  count = foundInit = foundSh = 0;
 
+  //lock the process table
   acquire(&ptable.lock);
 
   if (ptable.proc == NULL)
@@ -458,17 +462,30 @@ int proc_getprocs(void)
 
   for(itr = ptable.proc; itr < &ptable.proc[NPROC]; itr++)
   {
-    if (itr->state == RUNNING   ||
-        itr->state == RUNNABLE  ||
-        itr->state == EMBRYO    ||
+    if (itr->state == EMBRYO    ||
         itr->state == SLEEPING  ||
+        itr->state == RUNNABLE  ||
+        itr->state == RUNNING   ||
         itr->state == ZOMBIE
        )
     {
       //valid process in our table, so increment the count
-      ////TODO check that init is always running ETC @96
       count++;
-      cprintf("-->%s\n", itr->name);
+
+      #if 0
+      cprintf("PROC NAME: %s\n", itr->name);
+      #endif
+
+      //check that we have the two "main" parent processes
+      if (strncmp(itr->name, "init", 4) == STR_MATCH)
+      {
+        foundInit = 1;
+      }
+
+      if (strncmp(itr->name, "sh",   2) == STR_MATCH)
+      {
+        foundSh = 1;
+      }
     }
     else if (itr->state == UNUSED)
     {
@@ -482,9 +499,21 @@ int proc_getprocs(void)
     }
   }
 
+  //unlock the process table
   release(&ptable.lock);
 
-  //subtract one for THIS process?
-  return count;
+  //we should have `init`, `sh`, and this caller's proc running
+  if (foundInit &&
+      foundSh &&
+      (count > 2)
+     )
+  {
+    return count;
+  }
+  else
+  {
+    //this should never happen ;)
+    return -1;
+  }
 }
 

@@ -57,7 +57,6 @@ struct context {
   uint eip;
 };
 
-//TODO count the number of !unused processes
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state

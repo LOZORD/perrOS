@@ -89,7 +89,7 @@ static int (*syscalls[])(void) = {
 [SYS_exit]    sys_exit,
 [SYS_fork]    sys_fork,
 [SYS_fstat]   sys_fstat,
-[SYS_getpid]  sys_getpid, //TODO will have to change this
+[SYS_getpid]  sys_getpid,
 [SYS_kill]    sys_kill,
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,

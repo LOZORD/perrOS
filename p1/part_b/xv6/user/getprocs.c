@@ -9,8 +9,5 @@ main(int argc, char **argv)
 
   i = getprocs();
 
-  //TODO what to do with this file???
-  //printf(1,"got getprocs return val: %d\n", i);
-
   exit();
 }

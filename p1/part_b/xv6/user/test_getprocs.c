@@ -20,7 +20,7 @@ int main (int argc, char ** argv)
 
   //printf(1,"hello world!\t%d\n", ctr);
   printf(1,"hello world!\n");
-  printf(1,"\t-->getprocs value: %d\n", getprocs());
+  printf(1,"\t--> getprocs value: %d\n", getprocs());
 
   exit();
 }
