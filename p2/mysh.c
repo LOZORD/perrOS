@@ -192,6 +192,8 @@ void destroyArgList (ArgList * list) {
     itr = itr->next;
     free(temp);
   }
+
+  free(list);
 }
 
 void appendToCommandList (CommandList * list, char * chunkOfText, commandType iType, commandType oType) {
@@ -237,4 +239,6 @@ void destroyCommandList (CommandList * list) {
     free(temp->command);
     free(temp);
   }
+
+  free(list);
 }
