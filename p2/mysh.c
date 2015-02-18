@@ -28,52 +28,37 @@ char * buffItr;
 
 typedef enum { REGULAR_CMD, PIPE_CMD, TEE_CMD, O_REDIR_CMD, A_REDIR_CMD } commandType;
 
-//THE ABSTRACT PARENT -- structs below from xv6/user/sh.c
-/*
-struct cmd {
-  commandType type;
-};
 
-struct execcmd {
-  commandType type;
-  char *argv[MAXARGS];
-  char *eargv[MAXARGS];
-};
+typedef struct arg_node {
+  char * arg;
+  struct arg_node * next;
+} ArgNode;
 
-struct redircmd {
-  commandType type;
-  struct cmd *cmd;
-  char *file;
-  char *efile;
-  int mode;
-  int fd;
-};
-
-struct pipecmd {
-  commandType type;
-  struct cmd *left;
-  struct cmd *right;
-};
-
-struct listcmd {
-  commandType type;
-  struct cmd *left;
-  struct cmd *right;
-};
-
-struct backcmd {
-  commandType type;
-  struct cmd *cmd;
-};
-*/
+typedef struct arg_list {
+  int size;
+  ArgNode * head;
+  ArgNode * tail;
+} ArgList;
 
 typedef struct my_cmd {
-  char ** args;
+  ArgList * argList;
   commandType inputType;
   commandType outputType;
 } Command;
 
-Command * commandList;
+typedef struct cmd_nod {
+  Command * command;
+  struct cmd_nod * next;
+} CommandNode;
+
+typedef struct cmd_list {
+  int size;
+  CommandNode * head;
+  CommandNode * tail;
+} CommandList;
+
+void destroyCommandList (CommandList * l);
+void appendToCommandList (CommandList * l, char * s, commandType i, commandType o);
 
 int getcmd (FILE * file, char * buff) {
   if (file == NULL || buff == NULL) {
@@ -98,12 +83,17 @@ int main (int argc, char ** argv) {
   char * token = NULL;
   int buffSize;
   //char ** tokenList;
+  //
+  CommandList commandList;
 
   while ((buffSize = getcmd(stdin, buff)) >= 0) {
     printf("mysh got: %s", buff);
     buff[buffSize - 1] = '\0'; //change the term char from \n to \0
 
     char * foo = buff;
+    commandType inType, outType;
+
+    inType = outType = REGULAR_CMD;
 
     for (buffItr = buff; (*buffItr) != '\0'; buffItr++) {
       token = buffItr;
@@ -114,37 +104,47 @@ int main (int argc, char ** argv) {
         case '|':
           //TODO
           token = strtok(foo, "|");
-          foo = NULL;
           printf("saw pipe, got token: %s\n", token);
+          foo = buffItr + 1;
+          appendToCommandList(&commandList, token, inType, PIPE_CMD);
+          inType = PIPE_CMD;
           break;
         case '%':
           //TODO
           token = strtok(foo, "%");
           printf("saw tee, got token: %s\n", token);
-          foo = NULL;
+          foo = buffItr + 1;
+          appendToCommandList(&commandList, token, inType, TEE_CMD);
+          inType = TEE_CMD;
           break;
         case '>':
           if (buffItr[1] == '>') { //APPEND REDIRECTION
-            buffItr++;
             token = strtok(foo, ">>");
             printf("saw app, got token: %s\n", token);
-            foo = NULL;
+            buffItr++;
+            foo = buffItr + 1;
+            appendToCommandList(&commandList, token, inType, O_REDIR_CMD);
+            inType = O_REDIR_CMD;
             //TODO append
           }
           else { //OVERWRITE REDIRECTION
             token = strtok(foo, ">");
             printf("saw ovr, got token: %s\n", token);
-            foo = NULL;
+            foo = buffItr + 1;
+            appendToCommandList(&commandList, token, inType, A_REDIR_CMD);
+            inType = A_REDIR_CMD;
             //TODO ovr
           }
           break;
         default:
-          printf("just a regular char '%c'\n", *buffItr);
+          //printf("just a regular char '%c'\n", *buffItr);
           continue;
       }
     }
-    printf("Last token is %s\n", token);
-    //first find all of the pipes
+
+    appendToCommandList(&commandList, foo, inType, REGULAR_CMD);
+
+    destroyCommandList(&commandList);
   }
 
   perror("ERROR: Problem with mysh input!\n");
@@ -152,40 +152,41 @@ int main (int argc, char ** argv) {
   exit(EXIT_SUCCESS);
 }
 
-
 /*
-void * getNextCommand (char * buff) {
-  char * spacePtr, * pipePtr, * ovrRedirPtr, * appRedirPtr, * teePtr;
+void appendToArgList (ArgList * list, char * arg) {
+  ArgNode temp = malloc(sizeof(ArgNode));
 
-  char * smallestPtr;
+  temp->arg = arg;
+  temp->next = NULL;
 
-  char ** ptrArray = {
-    [REGULAR] = NULL,
-    [PIPE]    = strchr(buff, '|'),
-    [A_REDIR] = strstr(buff, ">>"),
-    [O_REDIR] = strchr(buff, '>'),
-    [TEE]     = strchr(buff, '%'),
-  };
+  list->tail = temp;
+*/
 
-  int i, type;
+void appendToCommandList (CommandList * list, char * chunkOfText, commandType iType, commandType oType) {
+  printf("in = %d; out = %d\n", iType, oType);
+  CommandNode * temp = malloc(sizeof(CommandNode));
 
-  smallestPtr = ptrArray[1];
-  type = PIPE;
+  temp->command = malloc(sizeof(Command));
 
-  for (i = 2; i < 5; i++) {
-    if (ptrArray[i] != NULL && smallestPtr > ptrArray[i]) {
-      smallestPtr = ptrArray[i];
-      type = i;
-    }
+  temp->command->inputType = iType;
+  temp->command->outputType = oType;
+
+  temp->command->argList = malloc(sizeof(ArgList));
+
+
+  char * word;
+  //ArgNode aNode;
+
+  //for (word = strchr(chunkOfText, ' '); word[0] != NULL; word = strchr(word, ' ')){
+  for (word = strtok(chunkOfText, " "); word != NULL; word = strtok(NULL, " ")) {
+    printf("token got word %s\n", word);
+    //temp->command-argList->
   }
 
-  type = smallestPtr == NULL ? REGULAR : type;
-
-  void * someCommand = malloc(sizeof(Command));
-
-  switch (type) {
-    case REGULAR:
-      someCommand->inputType = REGULAR;
-      someCommand->argv
+  list->tail = temp;
+  temp->next = NULL;
 }
-*/
+
+void destroyCommandList (CommandList * list) {
+  printf("TODO\n");
+}
