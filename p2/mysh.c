@@ -15,6 +15,8 @@
 #define O_REDIR 3
 #define A_REDIR 4
 
+#define DEBUG 1
+
 size_t MAX_INPUT_LENGTH = 1024;
 
 extern FILE * stdin;
@@ -96,16 +98,16 @@ int main (int argc, char ** argv) {
             //printf("saw app, got token: %s\n", token);
             buffItr++;
             foo = buffItr + 1;
-            appendToCommandList(commandList, token, inType, O_REDIR_CMD);
-            inType = O_REDIR_CMD;
+            appendToCommandList(commandList, token, inType, A_REDIR_CMD);
+            inType = A_REDIR_CMD;
             //TODO append
           }
           else { //OVERWRITE REDIRECTION
             token = strtok(foo, ">");
             //printf("saw ovr, got token: %s\n", token);
             foo = buffItr + 1;
-            appendToCommandList(commandList, token, inType, A_REDIR_CMD);
-            inType = A_REDIR_CMD;
+            appendToCommandList(commandList, token, inType, O_REDIR_CMD);
+            inType = O_REDIR_CMD;
             //TODO ovr
           }
           break;
@@ -147,7 +149,9 @@ void execCommands (CommandList * list) {
       error = chdir(getenv("HOME"));
     }
     if(error){
-      //fprintf(stderr,"Error: %s\n", strerror(errno));
+      #if DEBUG
+      fprintf(stderr,"Error: %s\n", strerror(errno));
+      #endif
       alertError();
     }
     return;
@@ -167,12 +171,16 @@ void execCommands (CommandList * list) {
     int status;
     int pid = fork();
     if(pid == -1){
-      //fprintf(stderr,"Error: %s\n", strerror(errno));
+      #if DEBUG
+      fprintf(stderr,"Error: %s\n", strerror(errno));
+      #endif
       alertError();
     }else if (pid == 0){
       //CHILD
       execvp(execArg, argv);
-      //fprintf(stderr,"Error: %s\n", strerror(errno));
+      #if DEBUG
+      fprintf(stderr,"Error: %s\n", strerror(errno));
+      #endif
       alertError();
       exit(EXIT_FAILURE);
     }else{
