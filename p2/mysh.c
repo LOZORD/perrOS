@@ -49,7 +49,7 @@ int getcmd (FILE * file, char * buff) {
 
   int result;
 
-  printf("mysh>");
+  printf("mysh> ");
   result = getline(&buff, &MAX_INPUT_LENGTH, file);
 
   return result;
@@ -125,7 +125,13 @@ int main (int argc, char ** argv) {
 
     appendToCommandList(commandList, foo, inType, REGULAR_CMD);
     //printCommandList(commandList);
-    execCommands(commandList);
+    //check for blank entry
+    if (commandList->size == 1 && commandList->head->command->argList->size == 0) {
+      //do nothing
+    }
+    else {
+      execCommands(commandList);
+    }
     destroyCommandList(commandList);
   } //end while
 
@@ -142,7 +148,7 @@ void execCommands (CommandList * list) {
   }else if(!strcmp(leadExecArg, "cd") && list->size == 1){
     int error;
     if(cNItr->command->argList->size > 1){
-      error = chdir(cNItr->command->argList->head->next->argVal); 
+      error = chdir(cNItr->command->argList->head->next->argVal);
     }else{
       error = chdir(getenv("HOME"));
     }
