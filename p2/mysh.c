@@ -49,7 +49,7 @@ int getcmd (FILE * file, char * buff) {
 
   int result;
 
-  printf("mysh> ");
+  printf("mysh>");
   result = getline(&buff, &MAX_INPUT_LENGTH, file);
 
   return result;
