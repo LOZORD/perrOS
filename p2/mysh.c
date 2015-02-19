@@ -34,6 +34,10 @@ void destroyCommandList (CommandList * l);
 void printCommandList (CommandList * l);
 void execCommands (CommandList * l);
 
+void alertError() {
+  fprintf(stderr, "Error!\n");
+}
+
 int getcmd (FILE * file, char * buff) {
   if (file == NULL || buff == NULL) {
     return -1;
@@ -133,7 +137,7 @@ int main (int argc, char ** argv) {
 void execCommands (CommandList * list) {
   CommandNode * cNItr = list->head;
   char * leadExecArg = cNItr->command->argList->head->argVal;
-  if(!strcmp(leadExecArg, "exit") && list->size == 1){
+  if(!strcmp(leadExecArg, "exit") && list->size == 1 && list->head->command->argList->size == 1){
       exit(EXIT_SUCCESS);
   }else if(!strcmp(leadExecArg, "cd") && list->size == 1){
     int error;
@@ -143,7 +147,8 @@ void execCommands (CommandList * list) {
       error = chdir(getenv("HOME"));
     }
     if(error){
-      fprintf(stderr,"Error: %s\n", strerror(errno));
+      //fprintf(stderr,"Error: %s\n", strerror(errno));
+      alertError();
     }
     return;
   }
@@ -162,11 +167,13 @@ void execCommands (CommandList * list) {
     int status;
     int pid = fork();
     if(pid == -1){
-      fprintf(stderr,"Error: %s\n", strerror(errno));
+      //fprintf(stderr,"Error: %s\n", strerror(errno));
+      alertError();
     }else if (pid == 0){
       //CHILD
       execvp(execArg, argv);
-      fprintf(stderr,"Error: %s\n", strerror(errno));
+      //fprintf(stderr,"Error: %s\n", strerror(errno));
+      alertError();
       exit(EXIT_FAILURE);
     }else{
       //PARENT
