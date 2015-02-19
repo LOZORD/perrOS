@@ -9,27 +9,19 @@
 #include <sys/wait.h>
 #include "mysh.h"
 
-size_t MAX_INPUT_LENGTH = 1024;
-char * TOKEN_DELIMS = " |>%\t";
-
 #define REGULAR 0
 #define PIPE 1
 #define TEE 2
 #define O_REDIR 3
 #define A_REDIR 4
 
-//char * SPECIAL_DELIMS = "";
+size_t MAX_INPUT_LENGTH = 1024;
 
 extern FILE * stdin;
 extern FILE * stdout;
 extern FILE * stderr;
 
 char * buffItr;
-
-//what should be done after this command
-//so for a | b, a would be PIPE, b would be normal
-//
-
 
 ArgList * newArgList();
 void appendToArgList (ArgList * l, char * a);
@@ -56,15 +48,11 @@ int getcmd (FILE * file, char * buff) {
 }
 
 int main (int argc, char ** argv) {
-  printf("Hello and welcome to mysh!\n");
   //TODO: open tee.txt or whatever
-  //
 
   char buff [MAX_INPUT_LENGTH + 1];
   char * token = NULL;
   int buffSize;
-  //char ** tokenList;
-  //
 
   while ((buffSize = getcmd(stdin, buff)) >= 0) {
     CommandList * commandList = newCommandList();
@@ -125,6 +113,7 @@ int main (int argc, char ** argv) {
 
     appendToCommandList(commandList, foo, inType, REGULAR_CMD);
     //printCommandList(commandList);
+
     //check for blank entry
     if (commandList->size == 1 && commandList->head->command->argList->size == 0) {
       //do nothing
@@ -132,6 +121,7 @@ int main (int argc, char ** argv) {
     else {
       execCommands(commandList);
     }
+
     destroyCommandList(commandList);
   } //end while
 
