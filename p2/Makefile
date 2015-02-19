@@ -1,8 +1,11 @@
 all: mysh.c
-	gcc -Wall -Werror mysh.c -O3 -o run_mysh
+	gcc -Wall -Werror mysh.c -O3 -o mysh
 
-clean: run_mysh
-	rm run_mysh
+clean: mysh
+	rm mysh
 
-val: run_mysh
-	valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes ./run_mysh
+val: mysh
+	valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes ./mysh
+
+pytest: mysh
+	python ~cs537-1/testing/p2a/ShellTest.py .
