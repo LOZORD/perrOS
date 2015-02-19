@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <errno.h>
 #include "mysh.h"
 
 size_t MAX_INPUT_LENGTH = 1024;
@@ -36,6 +38,7 @@ void appendToCommandList (CommandList * l, char * s, commandType i, commandType 
 void destroyCommandList (CommandList * l);
 
 void printCommandList (CommandList * l);
+void execCommands (CommandList * l);
 
 int getcmd (FILE * file, char * buff) {
   if (file == NULL || buff == NULL) {
@@ -119,13 +122,61 @@ int main (int argc, char ** argv) {
     }
 
     appendToCommandList(commandList, foo, inType, REGULAR_CMD);
-    printCommandList(commandList);
+    //printCommandList(commandList);
+    execCommands(commandList);
     destroyCommandList(commandList);
   } //end while
 
   perror("ERROR: Problem with mysh input!\n");
 
   exit(EXIT_SUCCESS);
+}
+
+void execCommands (CommandList * list) {
+  CommandNode * cNItr = list->head;
+  char * leadExecArg = cNItr->command->argList->head->argVal;
+  if(!strcmp(leadExecArg, "exit") && list->size == 1){
+      exit(EXIT_SUCCESS);
+  }else if(!strcmp(leadExecArg, "cd") && list->size == 1){
+    int error;
+    if(cNItr->command->argList->size > 1){
+      error = chdir(cNItr->command->argList->head->next->argVal); 
+    }else{
+      error = chdir(getenv("HOME"));
+    }
+    if(error){
+      fprintf(stderr,"Error: %s\n", strerror(errno));
+    }
+    return;
+  }
+  while(cNItr != NULL) {
+    ArgNode * aItr = cNItr->command->argList->head;
+    int i = 0;
+    char * execArg = aItr->argVal;
+    char * argv [cNItr->command->argList->size + 1];
+    while(aItr != NULL) {
+      argv[i] = (aItr->argVal);
+      aItr = aItr->next;
+      //printf("argv[%d] == %s\n", i, *argv[i]);
+      i++;
+    }
+    argv[i] = NULL;
+    int status;
+    int pid = fork();
+    if(pid == -1){
+      fprintf(stderr,"Error: %s\n", strerror(errno));
+    }else if (pid == 0){
+      //CHILD
+      execvp(execArg, argv);
+      fprintf(stderr,"Error: %s\n", strerror(errno));
+      exit(EXIT_FAILURE);
+    }else{
+      //PARENT
+      wait(&status);
+     // printf("Child completed with status: %d\n", status);
+    }
+    cNItr = cNItr->next;
+  }
 }
 
 void printCommandList (CommandList * list) {
@@ -213,7 +264,7 @@ void appendToCommandList (CommandList * list, char * chunkOfText, commandType iT
   //ArgNode aNode;
 
   //for (word = strchr(chunkOfText, ' '); word[0] != NULL; word = strchr(word, ' ')){
-  for (word = strtok(chunkOfText, " "); word != NULL; word = strtok(NULL, " ")) {
+  for (word = strtok(chunkOfText, " \t"); word != NULL; word = strtok(NULL, " \t")) {
     //printf("\ttoken got word %s\n", word);
     appendToArgList(temp->command->argList, word);
   }
