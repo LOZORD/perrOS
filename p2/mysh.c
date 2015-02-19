@@ -5,6 +5,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include "mysh.h"
 
 size_t MAX_INPUT_LENGTH = 1024;
