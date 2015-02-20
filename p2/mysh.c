@@ -24,7 +24,9 @@ size_t MAX_INPUT_LENGTH = 1024;
 extern FILE * stdin;
 extern FILE * stdout;
 extern FILE * stderr;
-int bak, new;
+int oldOut, new, oldIn, newIn;
+int pipe1fd[2];
+int pipe2fd[2];
 
 char * buffItr;
 
@@ -50,25 +52,32 @@ void switchStdout(const char *newStream, commandType write_mode)
 {
   if(write_mode == O_REDIR_CMD){
     fflush(stdout);
-    bak = dup(1);
+    oldOut = dup(1);
     new = open(newStream, O_WRONLY|O_TRUNC|O_CREAT, 0777);
     dup2(new, 1);
     close(new);
-  }else{
+  }else if(write_mode == A_REDIR_CMD){
     fflush(stdout);
-    bak = dup(1);
+    oldOut = dup(1);
     new = open(newStream, O_APPEND|O_WRONLY|O_CREAT, 0777);
     dup2(new, 1);
     close(new);
+  }else if(write_mode == PIPE_CMD){
+    pipe(pipe1fd);
+    oldOut = dup(1);
+    oldIn = dup(0);
+    dup2(1, pipe1fd[1]);
+    dup2(0, pipe1fd[0]);
   }
+
 
 }
 
 void revertStdout()
 {
   fflush(stdout);
-  dup2(bak, 1);
-  close(bak);
+  dup2(oldOut, 1);
+  close(oldOut);
 }
 
 int getcmd (FILE * file, char * buff) {
@@ -241,6 +250,19 @@ void execCommands (CommandList * list) {
     }
     //PARENT
     else {
+      if(cNItr->command->outputType == PIPE_CMD){
+        close(pipe1fd[1]);
+        int pid2 = fork();
+        if(pid2 == -1){
+          alertError();
+        }else if(pid2 == 0){
+          //CHILD
+        }else{
+          //PARENT
+          int status2;
+          wait(&status2);
+        }
+      }
       wait(&status);
       if(cNItr->command->outputType == O_REDIR_CMD){
         revertStdout();
@@ -266,7 +288,16 @@ int checkOutputType( CommandNode * currNode){
   }else if(currNode->command->outputType == A_REDIR_CMD){
     switchStdout(currNode->next->command->argList->head->argVal, A_REDIR_CMD);
     return 0;
+  }else if(currNode->command->outputType == PIPE_CMD){
+    //TODO PIPE
+    switchStdout(currNode->next->command->argList->head->argVal, PIPE_CMD);
+    return 0;
+  }else if(currNode->command->outputType == TEE_CMD){
+    //TODO TEE
+    return 0;
   }
+
+
   return 1;
 }
 
