@@ -36,6 +36,8 @@ void destroyCommandList (CommandList * l);
 void printCommandList (CommandList * l);
 void execCommands (CommandList * l);
 
+int streq (char * a, char * b, int n);
+
 void alertError() {
   fprintf(stderr, "Error!\n");
 }
@@ -138,56 +140,82 @@ int main (int argc, char ** argv) {
 
 void execCommands (CommandList * list) {
   CommandNode * cNItr = list->head;
+
   char * leadExecArg = cNItr->command->argList->head->argVal;
-  if(!strcmp(leadExecArg, "exit") && list->size == 1 && list->head->command->argList->size == 1){
+
+  if (
+      streq(leadExecArg, "exit", 4) &&
+      list->size == 1 &&
+      list->head->command->argList->size == 1
+    )
+    {
       exit(EXIT_SUCCESS);
-  }else if(!strcmp(leadExecArg, "cd") && list->size == 1){
+    }
+    else if (streq(leadExecArg, "cd", 2) && list->size == 1) {
     int error;
-    if(cNItr->command->argList->size > 1){
+    if (cNItr->command->argList->size > 1) {
       error = chdir(cNItr->command->argList->head->next->argVal);
-    }else{
+    }
+    else {
       error = chdir(getenv("HOME"));
     }
-    if(error){
+
+    if (error) {
       #if DEBUG
       fprintf(stderr,"Error: %s\n", strerror(errno));
       #endif
       alertError();
     }
+
     return;
   }
+
+  //now go through undetermined commands
   while(cNItr != NULL) {
     ArgNode * aItr = cNItr->command->argList->head;
+
+    //build the argv array
     int i = 0;
     char * execArg = aItr->argVal;
     char * argv [cNItr->command->argList->size + 1];
+
     while(aItr != NULL) {
       argv[i] = (aItr->argVal);
       aItr = aItr->next;
       //printf("argv[%d] == %s\n", i, *argv[i]);
       i++;
     }
+
+    //NULL terminate the argv array
     argv[i] = NULL;
+
+    //now fork into a child process
     int status;
     int pid = fork();
-    if(pid == -1){
+
+    //ERROR
+    if(pid == -1) {
       #if DEBUG
       fprintf(stderr,"Error: %s\n", strerror(errno));
       #endif
       alertError();
-    }else if (pid == 0){
-      //CHILD
+    }
+    //CHILD
+    else if (pid == 0) {
       execvp(execArg, argv);
       #if DEBUG
       fprintf(stderr,"Error: %s\n", strerror(errno));
       #endif
       alertError();
       exit(EXIT_FAILURE);
-    }else{
-      //PARENT
+    }
+    //PARENT
+    else {
       wait(&status);
      // printf("Child completed with status: %d\n", status);
     }
+
+    //continue onto the next command
     cNItr = cNItr->next;
   }
 }
@@ -305,4 +333,8 @@ void destroyCommandList (CommandList * list) {
   }
 
   free(list);
+}
+
+int streq(char * a, char * b, int n) {
+  return 0 == strncmp(a,b,n);
 }
