@@ -1,7 +1,7 @@
 all: mysh.c
 	gcc -Wall -Werror mysh.c -O3 -o mysh
 
-clean: mysh
+clean: 
 	rm mysh
 
 val: mysh

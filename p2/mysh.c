@@ -37,10 +37,12 @@ void destroyArgList (ArgList * l);
 CommandList * newCommandList();
 void appendToCommandList (CommandList * l, char * s, commandType i, commandType o);
 void destroyCommandList (CommandList * l);
+void execSingleCommand(CommandList * list, char **argv);
+char ** buildArgv(ArgList * list);
 
 void printCommandList (CommandList * l);
 void execCommands (CommandList * l);
-int checkOutputType( CommandNode * currNode);
+int checkOutputType( CommandList * list);
 
 int streq (char * a, char * b, int n);
 
@@ -62,14 +64,21 @@ void switchStdout(const char *newStream, commandType write_mode)
     new = open(newStream, O_APPEND|O_WRONLY|O_CREAT, 0777);
     dup2(new, 1);
     close(new);
-  }else if(write_mode == PIPE_CMD){
-    pipe(pipe1fd);
-    oldOut = dup(1);
-    oldIn = dup(0);
-    dup2(1, pipe1fd[1]);
-    dup2(0, pipe1fd[0]);
   }
 
+}
+
+void createPipe(CommandList * list){
+int size = list->size;
+if(size < 2){
+  alertError();
+}else if(size == 2){
+  pipe(pipe1fd);
+  oldOut = dup(1);
+  oldIn = dup(0);
+  dup2(1, pipe1fd[1]);
+  dup2(0, pipe1fd[0]);
+}
 
 }
 
@@ -176,60 +185,63 @@ int main (int argc, char ** argv) {
   exit(EXIT_SUCCESS);
 }
 
-void execCommands (CommandList * list) {
-  CommandNode * cNItr = list->head;
+char ** buildArgv(ArgList * list){
+  //build the argv array
+  ArgNode * aItr = list->head;
+  int i = 0;
+  char ** argv = malloc(sizeof(char) * (list->size + 1));
 
-  char * leadExecArg = cNItr->command->argList->head->argVal;
+  while(aItr != NULL) {
+    argv[i] = (aItr->argVal);
+    aItr = aItr->next;
+    //printf("argv[%d] == %s\n", i, *argv[i]);
+    i++;
+  }
+  //NULL terminate the argv array
+  argv[i] = NULL;
+  return argv;
+}
+
+void execCommands (CommandList * list) {
+
+  char ** argv = buildArgv(list->head->command->argList);
 
   if (
-      streq(leadExecArg, "exit", 4) &&
-      list->size == 1 &&
-      list->head->command->argList->size == 1
-    )
-    {
-      exit(EXIT_SUCCESS);
-    }
-    else if (streq(leadExecArg, "cd", 2) && list->size == 1) {
+    streq(argv[0], "exit", 4) &&
+    list->size == 1 &&
+    list->head->command->argList->size == 1
+  )
+  {
+    exit(EXIT_SUCCESS);
+  }
+  else if (streq(argv[0], "cd", 2) && list->size == 1) {
     int error;
-    if (cNItr->command->argList->size > 1) {
-      error = chdir(cNItr->command->argList->head->next->argVal);
-    }
-    else {
+    if (list->head->command->argList->size > 1) {
+      error = chdir(list->head->command->argList->head->next->argVal);
+    }else {
       error = chdir(getenv("HOME"));
     }
-
     if (error) {
       #if DEBUG
       fprintf(stderr,"Error: %s\n", strerror(errno));
       #endif
       alertError();
     }
-
     return;
   }
 
-  //now go through undetermined commands
-  while(cNItr != NULL) {
-    ArgNode * aItr = cNItr->command->argList->head;
 
-    //build the argv array
-    int i = 0;
-    char * execArg = aItr->argVal;
-    char * argv [cNItr->command->argList->size + 1];
+  if(list->size == 1
+      || (list->size == 2 && (list->head->command->outputType == O_REDIR_CMD || list->head->command->outputType == A_REDIR_CMD))
+    ){
+    execSingleCommand(list, argv);
+    return;
+  }
+}
 
-    while(aItr != NULL) {
-      argv[i] = (aItr->argVal);
-      aItr = aItr->next;
-      //printf("argv[%d] == %s\n", i, *argv[i]);
-      i++;
-    }
-
-    //NULL terminate the argv array
-    argv[i] = NULL;
-
-    //now fork into a child process
+void execSingleCommand(CommandList * list, char **argv){
     int status;
-    int cont = checkOutputType(cNItr);
+    checkOutputType(list);
     int pid = fork();
 
     //ERROR
@@ -241,7 +253,7 @@ void execCommands (CommandList * list) {
     }
     //CHILD
     else if (pid == 0) {
-      execvp(execArg, argv);
+      execvp(argv[0], argv);
       #if DEBUG
       fprintf(stderr,"Error: %s\n", strerror(errno));
       #endif
@@ -250,49 +262,29 @@ void execCommands (CommandList * list) {
     }
     //PARENT
     else {
-      if(cNItr->command->outputType == PIPE_CMD){
-        close(pipe1fd[1]);
-        int pid2 = fork();
-        if(pid2 == -1){
-          alertError();
-        }else if(pid2 == 0){
-          //CHILD
-        }else{
-          //PARENT
-          int status2;
-          wait(&status2);
-        }
-      }
       wait(&status);
-      if(cNItr->command->outputType == O_REDIR_CMD){
+      if(list->head->command->outputType == O_REDIR_CMD){
         revertStdout();
       }
-      if(cNItr->command->outputType == A_REDIR_CMD){
+      if(list->head->command->outputType == A_REDIR_CMD){
         revertStdout();
       }
      // printf("Child completed with status: %d\n", status);
     }
-
-    if(!cont){
-      return;
-    }
-
-    cNItr = cNItr->next;
-  }
 }
 
-int checkOutputType( CommandNode * currNode){
-  if(currNode->command->outputType == O_REDIR_CMD){
-    switchStdout(currNode->next->command->argList->head->argVal, O_REDIR_CMD);
+int checkOutputType( CommandList * list){
+  if(list->head->command->outputType == O_REDIR_CMD){
+    switchStdout(list->head->next->command->argList->head->argVal, O_REDIR_CMD);
     return 0;
-  }else if(currNode->command->outputType == A_REDIR_CMD){
-    switchStdout(currNode->next->command->argList->head->argVal, A_REDIR_CMD);
+  }else if(list->head->command->outputType == A_REDIR_CMD){
+    switchStdout(list->head->next->command->argList->head->argVal, A_REDIR_CMD);
     return 0;
-  }else if(currNode->command->outputType == PIPE_CMD){
+  }else if(list->head->command->outputType == PIPE_CMD){
     //TODO PIPE
-    switchStdout(currNode->next->command->argList->head->argVal, PIPE_CMD);
+    createPipe(list);
     return 0;
-  }else if(currNode->command->outputType == TEE_CMD){
+  }else if(list->head->command->outputType == TEE_CMD){
     //TODO TEE
     return 0;
   }
