@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <sys/wait.h>
 #include "mysh.h"
 
@@ -20,6 +22,7 @@ size_t MAX_INPUT_LENGTH = 1024;
 extern FILE * stdin;
 extern FILE * stdout;
 extern FILE * stderr;
+int bak, new;
 
 char * buffItr;
 
@@ -33,9 +36,35 @@ void destroyCommandList (CommandList * l);
 
 void printCommandList (CommandList * l);
 void execCommands (CommandList * l);
+int checkOutputType( CommandNode * currNode);
 
 void alertError() {
   fprintf(stderr, "Error!\n");
+}
+
+void switchStdout(const char *newStream, commandType write_mode)
+{
+  if(write_mode == O_REDIR_CMD){
+    fflush(stdout);
+    bak = dup(1);
+    new = open(newStream, O_WRONLY|O_TRUNC|O_CREAT, 0777);
+    dup2(new, 1);
+    close(new);
+  }else{
+    fflush(stdout);
+    bak = dup(1);
+    new = open(newStream, O_APPEND|O_WRONLY|O_CREAT, 0777);
+    dup2(new, 1);
+    close(new);
+  }
+
+}
+
+void revertStdout()
+{
+  fflush(stdout);
+  dup2(bak, 1);
+  close(bak);
 }
 
 int getcmd (FILE * file, char * buff) {
@@ -96,16 +125,16 @@ int main (int argc, char ** argv) {
             //printf("saw app, got token: %s\n", token);
             buffItr++;
             foo = buffItr + 1;
-            appendToCommandList(commandList, token, inType, O_REDIR_CMD);
-            inType = O_REDIR_CMD;
+            appendToCommandList(commandList, token, inType, A_REDIR_CMD);
+            inType = A_REDIR_CMD;
             //TODO append
           }
           else { //OVERWRITE REDIRECTION
             token = strtok(foo, ">");
             //printf("saw ovr, got token: %s\n", token);
             foo = buffItr + 1;
-            appendToCommandList(commandList, token, inType, A_REDIR_CMD);
-            inType = A_REDIR_CMD;
+            appendToCommandList(commandList, token, inType, O_REDIR_CMD);
+            inType = O_REDIR_CMD;
             //TODO ovr
           }
           break;
@@ -165,6 +194,7 @@ void execCommands (CommandList * list) {
     }
     argv[i] = NULL;
     int status;
+    int cont = checkOutputType(cNItr);
     int pid = fork();
     if(pid == -1){
       //fprintf(stderr,"Error: %s\n", strerror(errno));
@@ -178,10 +208,30 @@ void execCommands (CommandList * list) {
     }else{
       //PARENT
       wait(&status);
+      if(cNItr->command->outputType == O_REDIR_CMD){
+        revertStdout();
+      }
+      if(cNItr->command->outputType == A_REDIR_CMD){
+        revertStdout();
+      }
      // printf("Child completed with status: %d\n", status);
+    }
+    if(!cont){
+      return;
     }
     cNItr = cNItr->next;
   }
+}
+
+int checkOutputType( CommandNode * currNode){
+  if(currNode->command->outputType == O_REDIR_CMD){
+    switchStdout(currNode->next->command->argList->head->argVal, O_REDIR_CMD);
+    return 0;
+  }else if(currNode->command->outputType == A_REDIR_CMD){
+    switchStdout(currNode->next->command->argList->head->argVal, A_REDIR_CMD);
+    return 0;
+  }
+  return 1;
 }
 
 void printCommandList (CommandList * list) {
