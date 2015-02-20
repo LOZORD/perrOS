@@ -206,6 +206,7 @@ void execCommands (CommandList * list) {
 
   char ** argv = buildArgv(list->head->command->argList);
 
+  //exit command
   if (
     streq(argv[0], "exit", 4) &&
     list->size == 1 &&
@@ -214,6 +215,7 @@ void execCommands (CommandList * list) {
   {
     exit(EXIT_SUCCESS);
   }
+  //cd commands
   else if (streq(argv[0], "cd", 2) && list->size == 1) {
     int error;
     if (list->head->command->argList->size > 1) {
@@ -229,19 +231,23 @@ void execCommands (CommandList * list) {
     }
     return;
   }
-
-
+  //single commands and single redirects
   if(list->size == 1
       || (list->size == 2 && (list->head->command->outputType == O_REDIR_CMD || list->head->command->outputType == A_REDIR_CMD))
     ){
     execSingleCommand(list, argv);
     return;
   }
+  //pipe && Tee chains
+
 }
 
 void execSingleCommand(CommandList * list, char **argv){
     int status;
-    checkOutputType(list);
+    int error = checkOutputType(list);
+    if(error){
+      return;
+    }
     int pid = fork();
 
     //ERROR
@@ -275,9 +281,17 @@ void execSingleCommand(CommandList * list, char **argv){
 
 int checkOutputType( CommandList * list){
   if(list->head->command->outputType == O_REDIR_CMD){
+    if(list->size == 2 && list->head->next->command->argList->size == 0){
+      alertError();
+      return 1;
+    }
     switchStdout(list->head->next->command->argList->head->argVal, O_REDIR_CMD);
     return 0;
   }else if(list->head->command->outputType == A_REDIR_CMD){
+    if(list->size == 2 && list->head->next->command->argList->size == 0){
+      alertError();
+      return 1;
+    }
     switchStdout(list->head->next->command->argList->head->argVal, A_REDIR_CMD);
     return 0;
   }else if(list->head->command->outputType == PIPE_CMD){
@@ -290,7 +304,7 @@ int checkOutputType( CommandList * list){
   }
 
 
-  return 1;
+  return 0;
 }
 
 void printCommandList (CommandList * list) {
