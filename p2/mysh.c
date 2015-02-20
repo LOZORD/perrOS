@@ -17,6 +17,8 @@
 #define O_REDIR 3
 #define A_REDIR 4
 
+#define DEBUG 1
+
 size_t MAX_INPUT_LENGTH = 1024;
 
 extern FILE * stdin;
@@ -37,6 +39,8 @@ void destroyCommandList (CommandList * l);
 void printCommandList (CommandList * l);
 void execCommands (CommandList * l);
 int checkOutputType( CommandNode * currNode);
+
+int streq (char * a, char * b, int n);
 
 void alertError() {
   fprintf(stderr, "Error!\n");
@@ -165,48 +169,78 @@ int main (int argc, char ** argv) {
 
 void execCommands (CommandList * list) {
   CommandNode * cNItr = list->head;
+
   char * leadExecArg = cNItr->command->argList->head->argVal;
-  if(!strcmp(leadExecArg, "exit") && list->size == 1 && list->head->command->argList->size == 1){
+
+  if (
+      streq(leadExecArg, "exit", 4) &&
+      list->size == 1 &&
+      list->head->command->argList->size == 1
+    )
+    {
       exit(EXIT_SUCCESS);
-  }else if(!strcmp(leadExecArg, "cd") && list->size == 1){
+    }
+    else if (streq(leadExecArg, "cd", 2) && list->size == 1) {
     int error;
-    if(cNItr->command->argList->size > 1){
+    if (cNItr->command->argList->size > 1) {
       error = chdir(cNItr->command->argList->head->next->argVal);
-    }else{
+    }
+    else {
       error = chdir(getenv("HOME"));
     }
-    if(error){
-      //fprintf(stderr,"Error: %s\n", strerror(errno));
+
+    if (error) {
+      #if DEBUG
+      fprintf(stderr,"Error: %s\n", strerror(errno));
+      #endif
       alertError();
     }
+
     return;
   }
+
+  //now go through undetermined commands
   while(cNItr != NULL) {
     ArgNode * aItr = cNItr->command->argList->head;
+
+    //build the argv array
     int i = 0;
     char * execArg = aItr->argVal;
     char * argv [cNItr->command->argList->size + 1];
+
     while(aItr != NULL) {
       argv[i] = (aItr->argVal);
       aItr = aItr->next;
       //printf("argv[%d] == %s\n", i, *argv[i]);
       i++;
     }
+
+    //NULL terminate the argv array
     argv[i] = NULL;
+
+    //now fork into a child process
     int status;
     int cont = checkOutputType(cNItr);
     int pid = fork();
-    if(pid == -1){
-      //fprintf(stderr,"Error: %s\n", strerror(errno));
+
+    //ERROR
+    if(pid == -1) {
+      #if DEBUG
+      fprintf(stderr,"Error: %s\n", strerror(errno));
+      #endif
       alertError();
-    }else if (pid == 0){
-      //CHILD
+    }
+    //CHILD
+    else if (pid == 0) {
       execvp(execArg, argv);
-      //fprintf(stderr,"Error: %s\n", strerror(errno));
+      #if DEBUG
+      fprintf(stderr,"Error: %s\n", strerror(errno));
+      #endif
       alertError();
       exit(EXIT_FAILURE);
-    }else{
-      //PARENT
+    }
+    //PARENT
+    else {
       wait(&status);
       if(cNItr->command->outputType == O_REDIR_CMD){
         revertStdout();
@@ -216,9 +250,11 @@ void execCommands (CommandList * list) {
       }
      // printf("Child completed with status: %d\n", status);
     }
+
     if(!cont){
       return;
     }
+
     cNItr = cNItr->next;
   }
 }
@@ -347,4 +383,8 @@ void destroyCommandList (CommandList * list) {
   }
 
   free(list);
+}
+
+int streq(char * a, char * b, int n) {
+  return 0 == strncmp(a,b,n);
 }
