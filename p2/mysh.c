@@ -17,7 +17,7 @@
 #define O_REDIR 3
 #define A_REDIR 4
 
-#define DEBUG 1
+#define DEBUG 0
 
 size_t MAX_INPUT_LENGTH = 1024;
 
@@ -39,6 +39,7 @@ void appendToCommandList (CommandList * l, char * s, commandType i, commandType 
 void destroyCommandList (CommandList * l);
 void execSingleCommand(CommandList * list, char **argv);
 char ** buildArgv(ArgList * list);
+int isSpecChar(char * c);
 
 void printCommandList (CommandList * l);
 void execCommands (CommandList * l);
@@ -119,6 +120,7 @@ int main (int argc, char ** argv) {
 
     inType = outType = REGULAR_CMD;
 
+    int errorSeen = 0;
     for (buffItr = buff; (*buffItr) != '\0'; buffItr++) {
       token = buffItr;
       if (token == NULL) {
@@ -127,6 +129,11 @@ int main (int argc, char ** argv) {
       switch(*buffItr) {
         case '|':
           //TODO
+          if(isSpecChar(buffItr)){
+            alertError();
+            errorSeen = 1;
+            break;
+          }
           token = strtok(foo, "|");
           //printf("saw pipe, got token: %s\n", token);
           foo = buffItr + 1;
@@ -134,6 +141,11 @@ int main (int argc, char ** argv) {
           inType = PIPE_CMD;
           break;
         case '%':
+          if(isSpecChar(buffItr)){
+            alertError();
+            errorSeen = 1;
+            break;
+          }
           //TODO
           token = strtok(foo, "%");
           //printf("saw tee, got token: %s\n", token);
@@ -142,6 +154,11 @@ int main (int argc, char ** argv) {
           inType = TEE_CMD;
           break;
         case '>':
+          if(isSpecChar(buffItr)){
+            alertError();
+            errorSeen = 1;
+            break;
+          }
           if (buffItr[1] == '>') { //APPEND REDIRECTION
             token = strtok(foo, ">>");
             //printf("saw app, got token: %s\n", token);
@@ -152,6 +169,11 @@ int main (int argc, char ** argv) {
             //TODO append
           }
           else { //OVERWRITE REDIRECTION
+            if(isSpecChar(buffItr)){
+              alertError();
+              errorSeen = 1;
+              break;
+            }
             token = strtok(foo, ">");
             //printf("saw ovr, got token: %s\n", token);
             foo = buffItr + 1;
@@ -164,13 +186,16 @@ int main (int argc, char ** argv) {
           //printf("just a regular char '%c'\n", *buffItr);
           continue;
       }
+      if(errorSeen){
+        break;
+      }
     }
 
     appendToCommandList(commandList, foo, inType, REGULAR_CMD);
     //printCommandList(commandList);
 
     //check for blank entry
-    if (commandList->size == 1 && commandList->head->command->argList->size == 0) {
+    if ((commandList->size == 1 && commandList->head->command->argList->size == 0) || errorSeen) {
       //do nothing
     }
     else {
@@ -183,6 +208,20 @@ int main (int argc, char ** argv) {
   perror("ERROR: Problem with mysh input!\n");
 
   exit(EXIT_SUCCESS);
+}
+
+int isSpecChar(char * c){
+  if(c[0] == '|' || c[0] == '%'){ 
+    if(c[1] != '\0' && (c[1] == '|' || c[1] == '>' || c[1] == '%')){
+      return 1;
+    }
+  }else if( c[0] == '>'){
+    if(c[1] != '\0' && c[2] != '\0' && (c[1] == '|' || c[2] == '>' || c[1] == '%')){
+      return 1;
+    }
+  }
+    
+  return 0;
 }
 
 char ** buildArgv(ArgList * list){
@@ -204,6 +243,15 @@ char ** buildArgv(ArgList * list){
 
 void execCommands (CommandList * list) {
 
+  CommandNode * itr = list->head;
+  while(itr != NULL){
+    if(itr->command->argList->size == 0){
+      alertError();
+      return;
+    }
+    itr = itr->next;
+  }
+  //TODO dealloc argv!
   char ** argv = buildArgv(list->head->command->argList);
 
   //exit command
@@ -239,6 +287,7 @@ void execCommands (CommandList * list) {
     return;
   }
   //pipe && Tee chains
+
 
 }
 
