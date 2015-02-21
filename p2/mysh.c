@@ -25,8 +25,8 @@ extern FILE * stdin;
 extern FILE * stdout;
 extern FILE * stderr;
 int oldOut, new, oldIn, newIn;
-int pipe1fd[2];
-int pipe2fd[2];
+int p[2];
+int p2[2];
 
 char * buffItr;
 
@@ -40,6 +40,9 @@ void destroyCommandList (CommandList * l);
 void execSingleCommand(CommandList * list, char **argv);
 char ** buildArgv(ArgList * list);
 int isSpecChar(char * c);
+void execSinglePipe(char **argv, char **argv2);
+void execDoublePipe(char **argv, char **argv2,char **argv3);
+void execSinglePipeRedir(char **argv, char **argv2, char * file, commandType mode);
 
 void printCommandList (CommandList * l);
 void execCommands (CommandList * l);
@@ -66,20 +69,6 @@ void switchStdout(const char *newStream, commandType write_mode)
     dup2(new, 1);
     close(new);
   }
-
-}
-
-void createPipe(CommandList * list){
-int size = list->size;
-if(size < 2){
-  alertError();
-}else if(size == 2){
-  pipe(pipe1fd);
-  oldOut = dup(1);
-  oldIn = dup(0);
-  dup2(1, pipe1fd[1]);
-  dup2(0, pipe1fd[0]);
-}
 
 }
 
@@ -192,7 +181,9 @@ int main (int argc, char ** argv) {
     }
 
     appendToCommandList(commandList, foo, inType, REGULAR_CMD);
-    //printCommandList(commandList);
+    #if DEBUG
+    printCommandList(commandList);
+    #endif
 
     //check for blank entry
     if ((commandList->size == 1 && commandList->head->command->argList->size == 0) || errorSeen) {
@@ -228,7 +219,7 @@ char ** buildArgv(ArgList * list){
   //build the argv array
   ArgNode * aItr = list->head;
   int i = 0;
-  char ** argv = malloc(sizeof(char) * (list->size + 1));
+  char ** argv = malloc(sizeof(char *) * (list->size + 1));
 
   while(aItr != NULL) {
     argv[i] = (aItr->argVal);
@@ -287,9 +278,169 @@ void execCommands (CommandList * list) {
     return;
   }
   //pipe && Tee chains
-
-
+  if(list->size == 2){
+    //TODO
+    //We know we have either a valid pipe or tee command
+    if(list->head->command->outputType == PIPE_CMD){
+      //we have a pipe
+      char ** argv2 = buildArgv(list->tail->command->argList);
+      execSinglePipe(argv,argv2);
+      //TODO free argv2
+    }else{
+      //we have a tee
+    }
+  }else if(list->size == 3){
+    //TODO
+    //We know either 2 pipes or pipe redirect
+    char ** argv2 = buildArgv(list->head->next->command->argList);
+    char ** argv3 = buildArgv(list->tail->command->argList);
+    if(list->tail->command->inputType == PIPE_CMD){
+      execDoublePipe(argv,argv2,argv3);
+    }else {
+      //TODO
+      //Pipe then Append
+      execSinglePipeRedir(argv, argv2, argv3[0], list->tail->command->inputType);
+    }
+  }else if(list->size == 4){
+    //TODO
+    //We know 2 pipes followed by redirect
+  }
 }
+
+void execSinglePipeRedir(char **argv, char **argv2, char * file, commandType mode){
+  int childpid;
+  int status;
+  if(pipe(p) < 0){
+    alertError();
+    return;
+  }
+  //LEFT HAND SIDE CMD
+  if((childpid = fork()) == -1){
+    alertError();
+    return;
+  }else if(childpid == 0){
+    close(1);
+    dup(p[1]);
+    close(p[0]);
+    close(p[1]);
+    execvp(argv[0], argv);
+  }
+  //RIGHT HAND SIDE CMD
+  if((childpid = fork()) == -1){
+    alertError();
+    return;
+  }else if(childpid == 0){
+    close(0);
+    dup(p[0]);
+    close(p[0]);
+    close(p[1]);
+    switchStdout(file, mode);
+    execvp(argv2[0], argv2);
+  }
+  close(p[0]);
+  close(p[1]);
+  wait(&status);
+  wait(&status);
+}
+
+void execSinglePipe(char **argv, char **argv2){
+  int pid1;
+  int pid2;
+  int status1;
+  int status2;
+  if(pipe(p) < 0){
+    alertError();
+    return;
+  }
+  //LEFT HAND SIDE CMD
+  if((pid1 = fork()) == -1){
+    alertError();
+    return;
+  }else if(pid1 == 0){
+    close(1);
+    dup(p[1]);
+    close(p[0]);
+    close(p[1]);
+    execvp(argv[0], argv);
+  }
+  //RIGHT HAND SIDE CMD
+  if((pid2 = fork()) == -1){
+    alertError();
+    return;
+  }else if(pid2 == 0){
+    close(0);
+    dup(p[0]);
+    close(p[0]);
+    close(p[1]);
+    execvp(argv2[0], argv2);
+  }
+  close(p[0]);
+  close(p[1]);
+  waitpid(pid1, &status1,0);
+  waitpid(pid2, &status2,0);
+}
+
+void execDoublePipe(char **argv, char **argv2,char **argv3){
+  int childpid;
+  int status;
+  if(pipe(p) < 0){
+    alertError();
+    return;
+  }
+  if(pipe(p2) < 0){
+    alertError();
+    return;
+  }
+  //LEFT HAND SIDE CMD
+  if((childpid = fork()) == -1){
+    alertError();
+    return;
+  }else if(childpid == 0){
+    close(1);
+    dup(p[1]);
+    close(p[0]);
+    close(p[1]);
+    close(p2[0]);
+    close(p2[1]);
+    execvp(argv[0], argv);
+  }
+  //MIDDLE CMD
+  if((childpid = fork()) == -1){
+    alertError();
+    return;
+  }else if(childpid == 0){
+    close(0);
+    dup(p[0]);
+    close(1);
+    dup(p2[1]);
+    close(p[0]);
+    close(p[1]);
+    close(p2[0]);
+    close(p2[1]);
+    execvp(argv2[0], argv2);
+  }
+  //FAR RIGHT CMD
+  if((childpid = fork()) == -1){
+    alertError();
+    return;
+  }else if(childpid == 0){
+    close(0);
+    dup(p2[0]);
+    close(p[0]);
+    close(p[1]);
+    close(p2[0]);
+    close(p2[1]);
+    execvp(argv3[0], argv3);
+  }
+  close(p[0]);
+  close(p[1]);
+  close(p2[0]);
+  close(p2[1]);
+  wait(&status);
+  wait(&status);
+  wait(&status);
+}
+
 
 void execSingleCommand(CommandList * list, char **argv){
     int status;
@@ -343,15 +494,7 @@ int checkOutputType( CommandList * list){
     }
     switchStdout(list->head->next->command->argList->head->argVal, A_REDIR_CMD);
     return 0;
-  }else if(list->head->command->outputType == PIPE_CMD){
-    //TODO PIPE
-    createPipe(list);
-    return 0;
-  }else if(list->head->command->outputType == TEE_CMD){
-    //TODO TEE
-    return 0;
   }
-
 
   return 0;
 }
