@@ -43,6 +43,7 @@ int isSpecChar(char * c);
 void execSinglePipe(char **argv, char **argv2);
 void execDoublePipe(char **argv, char **argv2,char **argv3);
 void execSinglePipeRedir(char **argv, char **argv2, char * file, commandType mode);
+void execDoublePipeRedir(char **argv, char **argv2,char **argv3, char * file, commandType mode);
 
 void printCommandList (CommandList * l);
 void execCommands (CommandList * l);
@@ -304,7 +305,72 @@ void execCommands (CommandList * list) {
   }else if(list->size == 4){
     //TODO
     //We know 2 pipes followed by redirect
+    char ** argv2 = buildArgv(list->head->next->command->argList);
+    char ** argv3 = buildArgv(list->head->next->next->command->argList);
+    execDoublePipeRedir(argv, argv2, argv3,list->tail->command->argList->head->argVal, list->tail->command->inputType);
   }
+}
+
+void execDoublePipeRedir(char **argv, char **argv2,char **argv3, char * file, commandType mode){
+  int childpid;
+  int status;
+  if(pipe(p) < 0){
+    alertError();
+    return;
+  }
+  if(pipe(p2) < 0){
+    alertError();
+    return;
+  }
+  //LEFT HAND SIDE CMD
+  if((childpid = fork()) == -1){
+    alertError();
+    return;
+  }else if(childpid == 0){
+    close(1);
+    dup(p[1]);
+    close(p[0]);
+    close(p[1]);
+    close(p2[0]);
+    close(p2[1]);
+    execvp(argv[0], argv);
+  }
+  //MIDDLE CMD
+  if((childpid = fork()) == -1){
+    alertError();
+    return;
+  }else if(childpid == 0){
+    close(0);
+    dup(p[0]);
+    close(1);
+    dup(p2[1]);
+    close(p[0]);
+    close(p[1]);
+    close(p2[0]);
+    close(p2[1]);
+    execvp(argv2[0], argv2);
+  }
+  //FAR RIGHT CMD
+  if((childpid = fork()) == -1){
+    alertError();
+    return;
+  }else if(childpid == 0){
+    close(0);
+    dup(p2[0]);
+    switchStdout(file, mode);
+    close(p[0]);
+    close(p[1]);
+    close(p2[0]);
+    close(p2[1]);
+    execvp(argv3[0], argv3);
+  }
+  close(p[0]);
+  close(p[1]);
+  close(p2[0]);
+  close(p2[1]);
+  wait(&status);
+  wait(&status);
+  wait(&status);
 }
 
 void execSinglePipeRedir(char **argv, char **argv2, char * file, commandType mode){
