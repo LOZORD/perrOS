@@ -94,7 +94,6 @@ int getcmd (FILE * file, char * buff) {
 }
 
 int main (int argc, char ** argv) {
-  //TODO: open tee.txt or whatever
 
   char buff [MAX_INPUT_LENGTH + 1];
   char * token = NULL;
@@ -118,7 +117,6 @@ int main (int argc, char ** argv) {
       }
       switch(*buffItr) {
         case '|':
-          //TODO
           if(isSpecChar(buffItr)){
             alertError();
             errorSeen = 1;
@@ -136,7 +134,6 @@ int main (int argc, char ** argv) {
             errorSeen = 1;
             break;
           }
-          //TODO
           token = strtok(foo, "%");
           //printf("saw tee, got token: %s\n", token);
           foo = buffItr + 1;
@@ -156,7 +153,6 @@ int main (int argc, char ** argv) {
             foo = buffItr + 1;
             appendToCommandList(commandList, token, inType, A_REDIR_CMD);
             inType = A_REDIR_CMD;
-            //TODO append
           }
           else { //OVERWRITE REDIRECTION
             if(isSpecChar(buffItr)){
@@ -169,7 +165,6 @@ int main (int argc, char ** argv) {
             foo = buffItr + 1;
             appendToCommandList(commandList, token, inType, O_REDIR_CMD);
             inType = O_REDIR_CMD;
-            //TODO ovr
           }
           break;
         default:
@@ -253,6 +248,8 @@ void execCommands (CommandList * list) {
     list->head->command->argList->size == 1
   )
   {
+    free(argv);
+    destroyCommandList(list);
     exit(EXIT_SUCCESS);
   }
   //cd commands
@@ -269,6 +266,7 @@ void execCommands (CommandList * list) {
       #endif
       alertError();
     }
+    free(argv);
     return;
   }
   //single commands and single redirects
@@ -276,39 +274,52 @@ void execCommands (CommandList * list) {
       || (list->size == 2 && (list->head->command->outputType == O_REDIR_CMD || list->head->command->outputType == A_REDIR_CMD))
     ){
     execSingleCommand(list, argv);
+    free(argv);
     return;
   }
   //pipe && Tee chains
   if(list->size == 2){
-    //TODO
     //We know we have either a valid pipe or tee command
     if(list->head->command->outputType == PIPE_CMD){
       //we have a pipe
       char ** argv2 = buildArgv(list->tail->command->argList);
       execSinglePipe(argv,argv2);
-      //TODO free argv2
+      free(argv2);
     }else{
+      //TODO TEE
       //we have a tee
+      char *argv2[2] = { "./mytee", NULL };
+      char ** argv3 = buildArgv(list->tail->command->argList);
+      execDoublePipe(argv,argv2,argv3);
+      free(argv3);
     }
   }else if(list->size == 3){
-    //TODO
     //We know either 2 pipes or pipe redirect
     char ** argv2 = buildArgv(list->head->next->command->argList);
     char ** argv3 = buildArgv(list->tail->command->argList);
     if(list->tail->command->inputType == PIPE_CMD){
       execDoublePipe(argv,argv2,argv3);
     }else {
-      //TODO
-      //Pipe then Append
+      if(list->head->command->outputType == PIPE_CMD){
+      //Pipe then redirect
       execSinglePipeRedir(argv, argv2, argv3[0], list->tail->command->inputType);
+      }else{
+        //Tee redirect
+        char *argvT[2] = { "./mytee", NULL };
+        execDoublePipeRedir(argv, argvT, argv2, argv3[0], list->tail->command->inputType);
+      }
     }
+    free(argv2);
+    free(argv3);
   }else if(list->size == 4){
-    //TODO
     //We know 2 pipes followed by redirect
     char ** argv2 = buildArgv(list->head->next->command->argList);
     char ** argv3 = buildArgv(list->head->next->next->command->argList);
     execDoublePipeRedir(argv, argv2, argv3,list->tail->command->argList->head->argVal, list->tail->command->inputType);
+    free(argv2);
+    free(argv3);
   }
+  free(argv);
 }
 
 void execDoublePipeRedir(char **argv, char **argv2,char **argv3, char * file, commandType mode){
@@ -469,6 +480,11 @@ void execDoublePipe(char **argv, char **argv2,char **argv3){
     close(p2[0]);
     close(p2[1]);
     execvp(argv[0], argv);
+    #if DEBUG
+    fprintf(stderr,"Error: %s\n", strerror(errno));
+    #endif
+    alertError();
+    exit(EXIT_FAILURE);
   }
   //MIDDLE CMD
   if((childpid = fork()) == -1){
@@ -484,6 +500,12 @@ void execDoublePipe(char **argv, char **argv2,char **argv3){
     close(p2[0]);
     close(p2[1]);
     execvp(argv2[0], argv2);
+    #if DEBUG
+    fprintf(stderr,"Error: %s\n", strerror(errno));
+    printf("I'm mytee and I suck Balls!\n");
+    #endif
+    alertError();
+    exit(EXIT_FAILURE);
   }
   //FAR RIGHT CMD
   if((childpid = fork()) == -1){
@@ -497,6 +519,11 @@ void execDoublePipe(char **argv, char **argv2,char **argv3){
     close(p2[0]);
     close(p2[1]);
     execvp(argv3[0], argv3);
+    #if DEBUG
+    fprintf(stderr,"Error: %s\n", strerror(errno));
+    #endif
+    alertError();
+    exit(EXIT_FAILURE);
   }
   close(p[0]);
   close(p[1]);
