@@ -16,5 +16,7 @@ int main( int argc, char ** argv){
     memset(buff, '\0', MAX_LENGTH);
   }
 
+  fclose(teeFile);
+
   return 0; //Success
 }
