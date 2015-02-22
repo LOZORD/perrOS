@@ -296,6 +296,9 @@ void execCommands (CommandList * list) {
     }
     else {
       //we have a tee
+      #if DEBUG
+      printf("\tAT TEE!\n");
+      #endif
       char *argv2[2] = { "./mytee", NULL };
       char ** argv3 = buildArgv(list->tail->command->argList);
       execDoublePipe(argv,argv2,argv3);
@@ -494,6 +497,9 @@ void execDoublePipe(char **argv, char **argv2,char **argv3){
     alertError();
     return;
   }else if(childpid == 0){
+    #if DEBUG
+      int w; for(w = 0; argv[w] != NULL; w++) { printf("\tLEFT ARGS: %s\n", argv[w]); }
+    #endif
     close(1);
     dup(p[1]);
     close(p[0]);
@@ -512,6 +518,9 @@ void execDoublePipe(char **argv, char **argv2,char **argv3){
     alertError();
     return;
   }else if(childpid == 0){
+    #if DEBUG
+      int w; for(w = 0; argv2[w] != NULL; w++) { printf("\tMID ARGS: %s\n", argv2[w]); }
+    #endif
     close(0);
     dup(p[0]);
     close(1);
@@ -532,6 +541,9 @@ void execDoublePipe(char **argv, char **argv2,char **argv3){
     alertError();
     return;
   }else if(childpid == 0){
+    #if DEBUG
+      int w; for(w = 0; argv3[w] != NULL; w++) { printf("\tRIGHT ARGS: %s\n", argv3[w]); }
+    #endif
     close(0);
     dup(p2[0]);
     close(p[0]);
