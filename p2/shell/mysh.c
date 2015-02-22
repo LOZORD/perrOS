@@ -218,7 +218,7 @@ char ** buildArgv(ArgList * list) {
     argv[i] = (aItr->argVal);
     aItr = aItr->next;
     #if DEBUG
-    printf("argv[%d] == %s\n", i, *argv[i]);
+    printf("argv[%d] == %s\n", i, (argv[i]));
     #endif
     i++;
   }

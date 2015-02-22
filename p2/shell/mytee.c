@@ -12,6 +12,8 @@ char buff [MAX_LENGTH];
 
 int main( int argc, char ** argv) {
 
+  int len;
+
   //attempt the tee.txt file for writing
   FILE * teeFile = fopen("tee.txt", "w");
 
@@ -22,8 +24,12 @@ int main( int argc, char ** argv) {
 
   //read from standard in and write to standard out and the teeFile
   while(fgets(buff, MAX_LENGTH, stdin)) {
-    fwrite(buff, sizeof(char), MAX_LENGTH, teeFile);
-    fwrite(buff, sizeof(char), MAX_LENGTH, stdout);
+
+    len = strlen(buff);
+    len = len < (MAX_LENGTH - 1) ? len : MAX_LENGTH;
+
+    fwrite(buff, sizeof(char), len, teeFile);
+    fwrite(buff, sizeof(char), len, stdout);
     //empty the buffer
     memset(buff, '\0', MAX_LENGTH);
   }
