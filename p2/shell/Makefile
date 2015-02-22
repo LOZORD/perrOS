@@ -5,6 +5,7 @@ all: mysh.c mytee.c
 clean: 
 	rm mysh
 	rm mytee
+	rm tee.txt
 
 val: mysh
 	valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --num-callers=20 --track-fds=yes ./mysh
