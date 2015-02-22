@@ -30,3 +30,23 @@ typedef struct cmd_list {
   CommandNode * tail;
 } CommandList;
 
+ArgList * newArgList();
+void appendToArgList (ArgList * l, char * a);
+void destroyArgList (ArgList * l);
+
+CommandList * newCommandList();
+void appendToCommandList (CommandList * l, char * s, commandType i, commandType o);
+void destroyCommandList (CommandList * l);
+void execSingleCommand(CommandList * list, char **argv);
+char ** buildArgv(ArgList * list);
+int badCharNext(char * c);
+void execSinglePipe(char **argv, char **argv2);
+void execDoublePipe(char **argv, char **argv2,char **argv3);
+void execSinglePipeRedir(char **argv, char **argv2, char * file, commandType mode);
+void execDoublePipeRedir(char **argv, char **argv2,char **argv3, char * file, commandType mode);
+
+void printCommandList (CommandList * l);
+void execCommands (CommandList * l);
+int checkOutputType( CommandList * list);
+
+int streq (char * a, char * b, int n);

@@ -11,12 +11,6 @@
 #include <sys/wait.h>
 #include "mysh.h"
 
-#define REGULAR 0
-#define PIPE 1
-#define TEE 2
-#define O_REDIR 3
-#define A_REDIR 4
-
 #define DEBUG 0
 
 size_t MAX_INPUT_LENGTH = 1024;
@@ -30,47 +24,41 @@ int p2[2];
 
 char * buffItr;
 
-ArgList * newArgList();
-void appendToArgList (ArgList * l, char * a);
-void destroyArgList (ArgList * l);
-
-CommandList * newCommandList();
-void appendToCommandList (CommandList * l, char * s, commandType i, commandType o);
-void destroyCommandList (CommandList * l);
-void execSingleCommand(CommandList * list, char **argv);
-char ** buildArgv(ArgList * list);
-int isSpecChar(char * c);
-void execSinglePipe(char **argv, char **argv2);
-void execDoublePipe(char **argv, char **argv2,char **argv3);
-void execSinglePipeRedir(char **argv, char **argv2, char * file, commandType mode);
-void execDoublePipeRedir(char **argv, char **argv2,char **argv3, char * file, commandType mode);
-
-void printCommandList (CommandList * l);
-void execCommands (CommandList * l);
-int checkOutputType( CommandList * list);
-
-int streq (char * a, char * b, int n);
-
+//Our generic error printing
 void alertError() {
   fprintf(stderr, "Error!\n");
 }
 
-void switchStdout(const char *newStream, commandType write_mode)
-{
-  if(write_mode == O_REDIR_CMD){
-    fflush(stdout);
+void switchStdout(const char *newStream, commandType write_mode) {
+  int rc;
+  if (write_mode == O_REDIR_CMD || write_mode == A_REDIR_CMD) {
+    rc = fflush(stdout);
+    if (rc == EOF) {
+      alertError();
+      return;
+    }
+
     oldOut = dup(1);
-    new = open(newStream, O_WRONLY|O_TRUNC|O_CREAT, 0777);
-    dup2(new, 1);
-    close(new);
-  }else if(write_mode == A_REDIR_CMD){
-    fflush(stdout);
-    oldOut = dup(1);
-    new = open(newStream, O_APPEND|O_WRONLY|O_CREAT, 0777);
+
+    if (write_mode == O_REDIR_CMD) {
+      new = open(newStream, O_WRONLY|O_TRUNC |O_CREAT, 0777);
+    }
+    else {
+      new = open(newStream, O_WRONLY|O_APPEND|O_CREAT, 0777);
+    }
+
+    if (new == -1) {
+      alertError();
+      return;
+    }
+
     dup2(new, 1);
     close(new);
   }
-
+  //bad commandType
+  else {
+    alertError();
+  }
 }
 
 void revertStdout()
@@ -101,15 +89,13 @@ int main (int argc, char ** argv) {
 
   while ((buffSize = getcmd(stdin, buff)) >= 0) {
     CommandList * commandList = newCommandList();
-    //printf("mysh got: %s", buff);
     buff[buffSize - 1] = '\0'; //change the term char from \n to \0
 
-    char * foo = buff;
-    commandType inType, outType;
-
-    inType = outType = REGULAR_CMD;
-
+    char * currInput = buff;
+    commandType inType = REGULAR_CMD;
     int errorSeen = 0;
+
+    //iterate through all of the characters in the buffer
     for (buffItr = buff; (*buffItr) != '\0'; buffItr++) {
       token = buffItr;
       if (token == NULL) {
@@ -117,58 +103,70 @@ int main (int argc, char ** argv) {
       }
       switch(*buffItr) {
         case '|':
-          if(isSpecChar(buffItr)){
+          if(badCharNext(buffItr)) {
             alertError();
             errorSeen = 1;
             break;
           }
-          token = strtok(foo, "|");
-          //printf("saw pipe, got token: %s\n", token);
-          foo = buffItr + 1;
+          token = strtok(currInput, "|");
+          #if DEBUG
+          printf("saw pipe, got token: %s\n", token);
+          #endif
+          currInput = buffItr + 1;
           appendToCommandList(commandList, token, inType, PIPE_CMD);
           inType = PIPE_CMD;
           break;
         case '%':
-          if(isSpecChar(buffItr)){
+          if(badCharNext(buffItr)) {
             alertError();
             errorSeen = 1;
             break;
           }
-          token = strtok(foo, "%");
-          //printf("saw tee, got token: %s\n", token);
-          foo = buffItr + 1;
+          token = strtok(currInput, "%");
+          #if DEBUG
+          printf("saw tee, got token: %s\n", token);
+          #endif
+          currInput = buffItr + 1;
           appendToCommandList(commandList, token, inType, TEE_CMD);
           inType = TEE_CMD;
           break;
         case '>':
-          if(isSpecChar(buffItr)){
+          if(badCharNext(buffItr)) {
             alertError();
             errorSeen = 1;
             break;
           }
-          if (buffItr[1] == '>') { //APPEND REDIRECTION
-            token = strtok(foo, ">>");
-            //printf("saw app, got token: %s\n", token);
+          //APPEND REDIRECTION
+          if (buffItr[1] == '>') { 
+            token = strtok(currInput, ">>");
+            #if DEBUG
+            printf("saw app, got token: %s\n", token);
+            #endif
             buffItr++;
-            foo = buffItr + 1;
+            currInput = buffItr + 1;
             appendToCommandList(commandList, token, inType, A_REDIR_CMD);
             inType = A_REDIR_CMD;
           }
-          else { //OVERWRITE REDIRECTION
-            if(isSpecChar(buffItr)){
+          //OVERWRITE REDIRECTION
+          else {
+            if(badCharNext(buffItr)){
               alertError();
               errorSeen = 1;
               break;
             }
-            token = strtok(foo, ">");
-            //printf("saw ovr, got token: %s\n", token);
-            foo = buffItr + 1;
+            token = strtok(currInput, ">");
+            #if DEBUG
+            printf("saw ovr, got token: %s\n", token);
+            #endif
+            currInput = buffItr + 1;
             appendToCommandList(commandList, token, inType, O_REDIR_CMD);
             inType = O_REDIR_CMD;
           }
           break;
         default:
-          //printf("just a regular char '%c'\n", *buffItr);
+          #if DEBUG
+          printf("just a regular char '%c'\n", *buffItr);
+          #endif
           continue;
       }
       if(errorSeen){
@@ -176,12 +174,12 @@ int main (int argc, char ** argv) {
       }
     }
 
-    appendToCommandList(commandList, foo, inType, REGULAR_CMD);
+    appendToCommandList(commandList, currInput, inType, REGULAR_CMD);
     #if DEBUG
     printCommandList(commandList);
     #endif
 
-    //check for blank entry
+    //check for blank entry or erroneous input
     if ((commandList->size == 1 && commandList->head->command->argList->size == 0) || errorSeen) {
       //do nothing
     }
@@ -192,13 +190,12 @@ int main (int argc, char ** argv) {
     destroyCommandList(commandList);
   } //end while
 
-  perror("ERROR: Problem with mysh input!\n");
-
+  fputc('\n', stdout);
   exit(EXIT_SUCCESS);
 }
 
-int isSpecChar(char * c){
-  if(c[0] == '|' || c[0] == '%'){ 
+int badCharNext(char * c) {
+  if(c[0] == '|' || c[0] == '%'){
     if(c[1] != '\0' && (c[1] == '|' || c[1] == '>' || c[1] == '%')){
       return 1;
     }
@@ -207,7 +204,8 @@ int isSpecChar(char * c){
       return 1;
     }
   }
-    
+
+  //no bad character input next
   return 0;
 }
 
