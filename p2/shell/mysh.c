@@ -137,7 +137,7 @@ int main (int argc, char ** argv) {
             break;
           }
           //APPEND REDIRECTION
-          if (buffItr[1] == '>') { 
+          if (buffItr[1] == '>') {
             token = strtok(currInput, ">>");
             #if DEBUG
             printf("saw app, got token: %s\n", token);
@@ -195,22 +195,21 @@ int main (int argc, char ** argv) {
 }
 
 int badCharNext(char * c) {
-  if(c[0] == '|' || c[0] == '%'){
-    if(c[1] != '\0' && (c[1] == '|' || c[1] == '>' || c[1] == '%')){
-      return 1;
-    }
-  }else if( c[0] == '>'){
-    if(c[1] != '\0' && c[2] != '\0' && (c[1] == '|' || c[2] == '>' || c[1] == '%')){
+  if (c[0] == '|' || c[0] == '%') {
+    if (c[1] != '\0' && (c[1] == '|' || c[1] == '>' || c[1] == '%')) {
       return 1;
     }
   }
-
+  else if( c[0] == '>') {
+    if(c[1] != '\0' && c[2] != '\0' && (c[1] == '|' || c[2] == '>' || c[1] == '%')) {
+      return 1;
+    }
+  }
   //no bad character input next
   return 0;
 }
 
-char ** buildArgv(ArgList * list){
-  //build the argv array
+char ** buildArgv(ArgList * list) {
   ArgNode * aItr = list->head;
   int i = 0;
   char ** argv = malloc(sizeof(char *) * (list->size + 1));
@@ -218,7 +217,9 @@ char ** buildArgv(ArgList * list){
   while(aItr != NULL) {
     argv[i] = (aItr->argVal);
     aItr = aItr->next;
-    //printf("argv[%d] == %s\n", i, *argv[i]);
+    #if DEBUG
+    printf("argv[%d] == %s\n", i, *argv[i]);
+    #endif
     i++;
   }
   //NULL terminate the argv array
@@ -236,10 +237,10 @@ void execCommands (CommandList * list) {
     }
     itr = itr->next;
   }
-  //TODO dealloc argv!
   char ** argv = buildArgv(list->head->command->argList);
 
-  //exit command
+  //SOME BUILT-IN COMMANDS
+  //`exit` command
   if (
     streq(argv[0], "exit", 4) &&
     list->size == 1 &&
@@ -250,66 +251,79 @@ void execCommands (CommandList * list) {
     destroyCommandList(list);
     exit(EXIT_SUCCESS);
   }
-  //cd commands
+  //`cd` commands
   else if (streq(argv[0], "cd", 2) && list->size == 1) {
     int error;
     if (list->head->command->argList->size > 1) {
       error = chdir(list->head->command->argList->head->next->argVal);
-    }else {
+    }
+    else {
       error = chdir(getenv("HOME"));
     }
+
+    //error changing directory?
     if (error) {
       #if DEBUG
       fprintf(stderr,"Error: %s\n", strerror(errno));
       #endif
       alertError();
     }
+
     free(argv);
     return;
   }
+
   //single commands and single redirects
   if(list->size == 1
-      || (list->size == 2 && (list->head->command->outputType == O_REDIR_CMD || list->head->command->outputType == A_REDIR_CMD))
-    ){
+      || (list->size == 2
+        && (
+          list->head->command->outputType == O_REDIR_CMD
+          || list->head->command->outputType == A_REDIR_CMD))
+    ) {
     execSingleCommand(list, argv);
     free(argv);
     return;
   }
-  //pipe && Tee chains
-  if(list->size == 2){
+
+  //pipe && tee chains
+  if(list->size == 2) {
     //We know we have either a valid pipe or tee command
-    if(list->head->command->outputType == PIPE_CMD){
+    if(list->head->command->outputType == PIPE_CMD) {
       //we have a pipe
       char ** argv2 = buildArgv(list->tail->command->argList);
       execSinglePipe(argv,argv2);
       free(argv2);
-    }else{
-      //TODO TEE
+    }
+    else {
       //we have a tee
       char *argv2[2] = { "./mytee", NULL };
       char ** argv3 = buildArgv(list->tail->command->argList);
       execDoublePipe(argv,argv2,argv3);
       free(argv3);
     }
-  }else if(list->size == 3){
+  }
+  else if(list->size == 3) {
     //We know either 2 pipes or pipe redirect
     char ** argv2 = buildArgv(list->head->next->command->argList);
     char ** argv3 = buildArgv(list->tail->command->argList);
-    if(list->tail->command->inputType == PIPE_CMD){
+    if(list->tail->command->inputType == PIPE_CMD) {
       execDoublePipe(argv,argv2,argv3);
-    }else {
-      if(list->head->command->outputType == PIPE_CMD){
+    }
+    else {
+      if(list->head->command->outputType == PIPE_CMD) {
       //Pipe then redirect
       execSinglePipeRedir(argv, argv2, argv3[0], list->tail->command->inputType);
-      }else{
+      }
+      else {
         //Tee redirect
-        char *argvT[2] = { "./mytee", NULL };
+        char *argvT[2] = { "./mytee", NULL }; //the Tee payload
         execDoublePipeRedir(argv, argvT, argv2, argv3[0], list->tail->command->inputType);
       }
     }
     free(argv2);
     free(argv3);
-  }else if(list->size == 4){
+  }
+  else if(list->size == 4) {
     //We know 2 pipes followed by redirect
     char ** argv2 = buildArgv(list->head->next->command->argList);
     char ** argv3 = buildArgv(list->head->next->next->command->argList);
@@ -317,8 +331,17 @@ void execCommands (CommandList * list) {
     free(argv2);
     free(argv3);
   }
+  else {
+    alertError();
+  }
+
   free(argv);
 }
+
+
+/* What follows are our executor functions. They are built off of the executor,
+ * piping, and redirection functionality found in xv6/user/sh.c
+ */
 
 void execDoublePipeRedir(char **argv, char **argv2,char **argv3, char * file, commandType mode){
   int childpid;
@@ -500,7 +523,6 @@ void execDoublePipe(char **argv, char **argv2,char **argv3){
     execvp(argv2[0], argv2);
     #if DEBUG
     fprintf(stderr,"Error: %s\n", strerror(errno));
-    printf("I'm mytee and I suck Balls!\n");
     #endif
     alertError();
     exit(EXIT_FAILURE);
@@ -531,7 +553,6 @@ void execDoublePipe(char **argv, char **argv2,char **argv3){
   wait(&status);
   wait(&status);
 }
-
 
 void execSingleCommand(CommandList * list, char **argv){
     int status;
@@ -566,7 +587,10 @@ void execSingleCommand(CommandList * list, char **argv){
       if(list->head->command->outputType == A_REDIR_CMD){
         revertStdout();
       }
-     // printf("Child completed with status: %d\n", status);
+
+      #if DEBUG
+      printf("Child completed with status: %d\n", status);
+      #endif
     }
 }
 
@@ -590,6 +614,7 @@ int checkOutputType( CommandList * list){
   return 0;
 }
 
+//for debugging
 void printCommandList (CommandList * list) {
   CommandNode * cNItr = list->head;
   printf("List size: %d\n", list->size);
@@ -611,7 +636,6 @@ void printCommandList (CommandList * list) {
 
 
 void appendToArgList (ArgList * list, char * arg) {
-  //printf("Entered appendToArgList\n");
   ArgNode * temp = malloc(sizeof(ArgNode));
   size_t strSize = strlen(arg) + 1;
   temp->argVal = malloc(strSize);
@@ -625,7 +649,6 @@ void appendToArgList (ArgList * list, char * arg) {
     list->tail->next = temp;
     list->tail = temp;
   }
-  //printf("Exited appendToArgList\n");
 }
 
 ArgList * newArgList () {
@@ -647,7 +670,6 @@ CommandList * newCommandList () {
 void destroyArgList (ArgList * list) {
   list->size = 0;
   ArgNode * itr = list->head;
-  //char * argItr;
   while(itr != NULL) {
     free(itr->argVal);
     ArgNode * temp = itr;
@@ -659,7 +681,6 @@ void destroyArgList (ArgList * list) {
 }
 
 void appendToCommandList (CommandList * list, char * chunkOfText, commandType iType, commandType oType) {
-  //printf("in = %d; out = %d\n", iType, oType);
   CommandNode * temp = malloc(sizeof(CommandNode));
   list->size += 1;
 
@@ -672,13 +693,14 @@ void appendToCommandList (CommandList * list, char * chunkOfText, commandType iT
 
 
   char * word;
-  //ArgNode aNode;
 
-  //for (word = strchr(chunkOfText, ' '); word[0] != NULL; word = strchr(word, ' ')){
   for (word = strtok(chunkOfText, " \t"); word != NULL; word = strtok(NULL, " \t")) {
-    //printf("\ttoken got word %s\n", word);
+    #if DEBUG
+    printf("\ttoken got word %s\n", word);
+    #endif
     appendToArgList(temp->command->argList, word);
   }
+
   temp->next = NULL;
 
   if (!(list->head && list->tail)) {
