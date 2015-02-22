@@ -370,6 +370,7 @@ void execDoublePipeRedir(char **argv, char **argv2,char **argv3, char * file, co
     close(p2[1]);
     execvp(argv[0], argv);
     alertError(); //execvp call should never return
+    exit(EXIT_FAILURE);
   }
   //MIDDLE CMD
   if((childpid = fork()) == -1){
@@ -386,6 +387,7 @@ void execDoublePipeRedir(char **argv, char **argv2,char **argv3, char * file, co
     close(p2[1]);
     execvp(argv2[0], argv2);
     alertError(); //execvp call should never return
+    exit(EXIT_FAILURE);
   }
   //FAR RIGHT CMD
   if((childpid = fork()) == -1){
@@ -401,6 +403,7 @@ void execDoublePipeRedir(char **argv, char **argv2,char **argv3, char * file, co
     close(p2[1]);
     execvp(argv3[0], argv3);
     alertError(); //execvp call should never return
+    exit(EXIT_FAILURE);
   }
   close(p[0]);
   close(p[1]);
@@ -429,6 +432,7 @@ void execSinglePipeRedir(char **argv, char **argv2, char * file, commandType mod
     close(p[1]);
     execvp(argv[0], argv);
     alertError(); //execvp call should never return
+    exit(EXIT_FAILURE);
   }
   //RIGHT HAND SIDE CMD
   if((childpid = fork()) == -1){
@@ -442,6 +446,7 @@ void execSinglePipeRedir(char **argv, char **argv2, char * file, commandType mod
     switchStdout(file, mode);
     execvp(argv2[0], argv2);
     alertError(); //execvp call should never return
+    exit(EXIT_FAILURE);
   }
   close(p[0]);
   close(p[1]);
@@ -469,6 +474,7 @@ void execSinglePipe(char **argv, char **argv2){
     close(p[1]);
     execvp(argv[0], argv);
     alertError(); //execvp call should never return
+    exit(EXIT_FAILURE);
   }
   //RIGHT HAND SIDE CMD
   if((pid2 = fork()) == -1){
@@ -481,6 +487,7 @@ void execSinglePipe(char **argv, char **argv2){
     close(p[1]);
     execvp(argv2[0], argv2);
     alertError(); //execvp call should never return
+    exit(EXIT_FAILURE);
   }
   close(p[0]);
   close(p[1]);
