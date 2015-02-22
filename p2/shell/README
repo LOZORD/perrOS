@@ -7,4 +7,12 @@ CSL-ID: hyatt
 
 Implementation Details:
 
-TODO
+We started out by looking at the shell implementation in `xv6/user/sh.c` . This
+provided a lot of insight in regard to how commands should be parsed, strutured,
+and configured. We also took our own freedomes with the data structures.
+
+It seems we parsed entries differently. We also stored everything differently.
+Instead of having different structs for different commands, we have just one:
+CommandList, a linked list of CommandNodes. Every CommandNode has an input and
+output designation, as well as an associated list of arguments. Please see our
+file `mysh.h` for more details on our data structures.
