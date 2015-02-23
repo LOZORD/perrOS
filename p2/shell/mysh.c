@@ -297,7 +297,17 @@ void execCommands (CommandList * list) {
     //We know either 2 pipes or pipe redirect
     char ** argv2 = buildArgv(list->head->next->command->argList);
     char ** argv3 = buildArgv(list->tail->command->argList);
-    if(list->tail->command->inputType == PIPE_CMD){
+    if(list->head->command->outputType == A_REDIR_CMD || list->head->command->outputType == O_REDIR_CMD){
+      CommandList * first = newCommandList();
+      CommandList * second = newCommandList();
+      first->head = list->head;
+      first->tail = list->head->next;
+      second->head = second->tail = list->tail;
+      execSingleCommand(first,argv);
+      execSingleCommand(second, argv3);
+      free(first);
+      free(second);
+    } else if(list->tail->command->inputType == PIPE_CMD){
       execDoublePipe(argv,argv2,argv3);
     }else {
       if(list->head->command->outputType == PIPE_CMD){
