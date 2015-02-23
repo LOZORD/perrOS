@@ -227,6 +227,14 @@ char ** buildArgv(ArgList * list) {
   return argv;
 }
 
+/*TODO we must account for
+ *
+ * a > b | c
+ * a > b | c | d
+ * a | b > c | d
+ *
+ * in addition to what we already have
+ */
 void execCommands (CommandList * list) {
 
   CommandNode * itr = list->head;
