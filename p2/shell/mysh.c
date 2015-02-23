@@ -227,14 +227,6 @@ char ** buildArgv(ArgList * list) {
   return argv;
 }
 
-/*TODO we must account for
- *
- * a > b | c
- * a > b | c | d
- * a | b > c | d
- *
- * in addition to what we already have
- */
 void execCommands (CommandList * list) {
 
   CommandNode * itr = list->head;
@@ -317,6 +309,7 @@ void execCommands (CommandList * list) {
     //We know either 2 pipes or pipe redirect
     char ** argv2 = buildArgv(list->head->next->command->argList);
     char ** argv3 = buildArgv(list->tail->command->argList);
+    FILE * teeFilePtr = NULL;
     if(list->head->command->outputType == A_REDIR_CMD || list->head->command->outputType == O_REDIR_CMD){
       CommandList * first = newCommandList();
       CommandList * second = newCommandList();
@@ -326,7 +319,7 @@ void execCommands (CommandList * list) {
       execSingleCommand(first,argv);
       execSinglePipe(NULL, argv3);
       if(list->tail->command->inputType == TEE_CMD){
-        fopen("tee.txt", "w");
+        teeFilePtr = fopen("tee.txt", "w");
       }
       free(first);
       free(second);
@@ -346,6 +339,9 @@ void execCommands (CommandList * list) {
     }
     free(argv2);
     free(argv3);
+    if (teeFilePtr) {
+      fclose(teeFilePtr);
+    }
   }else if(list->size == 4){
     char ** argv2 = buildArgv(list->head->next->command->argList);
     char ** argv3 = buildArgv(list->head->next->next->command->argList);
@@ -354,7 +350,7 @@ void execCommands (CommandList * list) {
     //We know 2 pipes followed by redirect
     execDoublePipeRedir(argv, argv2, argv3,list->tail->command->argList->head->argVal, list->tail->command->inputType);
     }else if(list->head->command->outputType == A_REDIR_CMD || list->head->command->outputType == O_REDIR_CMD){
-      execSingleCommand(list, argv); 
+      execSingleCommand(list, argv);
       CommandList * second = newCommandList();
       second->head =list->head->next->next;
       second->tail = list->tail;
