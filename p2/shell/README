@@ -1,10 +1,18 @@
-Name: Leo Rudberg
-CSL-ID: leo
 Name: Nicholas Hyatt
 CSL-ID: hyatt
+Name: Leo Rudberg
+CSL-ID: leo
 (Leave the second name and ID blank if working alone)
 (Do NOT suffix your CSL IDs with @cs.wisc.edu, the ID alone is sufficient)
 
 Implementation Details:
 
-TODO
+We started out by looking at the shell implementation in `xv6/user/sh.c` . This
+provided a lot of insight in regard to how commands should be parsed, strutured,
+and configured. We also took our own freedomes with the data structures.
+
+It seems we parsed entries differently. We also stored everything differently.
+Instead of having different structs for different commands, we have just one:
+CommandList, a linked list of CommandNodes. Every CommandNode has an input and
+output designation, as well as an associated list of arguments. Please see our
+file `mysh.h` for more details on our data structures.
