@@ -317,7 +317,17 @@ void execCommands (CommandList * list) {
     //We know either 2 pipes or pipe redirect
     char ** argv2 = buildArgv(list->head->next->command->argList);
     char ** argv3 = buildArgv(list->tail->command->argList);
-    if(list->tail->command->inputType == PIPE_CMD) {
+    if(list->head->command->outputType == A_REDIR_CMD || list->head->command->outputType == O_REDIR_CMD){
+      CommandList * first = newCommandList();
+      CommandList * second = newCommandList();
+      first->head = list->head;
+      first->tail = list->head->next;
+      second->head = second->tail = list->tail;
+      execSingleCommand(first,argv);
+      execSingleCommand(second, argv3);
+      free(first);
+      free(second);
+    } else if(list->tail->command->inputType == PIPE_CMD){
       execDoublePipe(argv,argv2,argv3);
     }
     else {
@@ -333,14 +343,31 @@ void execCommands (CommandList * list) {
     }
     free(argv2);
     free(argv3);
-  }
-  else if(list->size == 4) {
-    //We know 2 pipes followed by redirect
+  }else if(list->size == 4){
     char ** argv2 = buildArgv(list->head->next->command->argList);
     char ** argv3 = buildArgv(list->head->next->next->command->argList);
+    char ** argv4 = buildArgv(list->tail->command->argList);
+    if(list->tail->command->inputType == A_REDIR_CMD || list->tail->command->inputType == O_REDIR_CMD){
+    //We know 2 pipes followed by redirect
     execDoublePipeRedir(argv, argv2, argv3,list->tail->command->argList->head->argVal, list->tail->command->inputType);
+    }else if(list->head->command->outputType == A_REDIR_CMD || list->head->command->outputType == O_REDIR_CMD){
+      execSingleCommand(list, argv); 
+      CommandList * second = newCommandList();
+      second->head =list->head->next->next;
+      second->tail = list->tail;
+      execSinglePipe(argv3, argv4);
+      free(second);
+    }else if(list->head->next->command->outputType == A_REDIR_CMD || list->head->next->command->outputType == O_REDIR_CMD){
+      CommandList * second = newCommandList();
+      second->head =list->tail;
+      second->tail = list->tail;
+      execSinglePipeRedir(argv, argv2, argv3[0], list->head->next->command->outputType);
+      execSingleCommand(second, argv4);
+      free(second);
+    }
     free(argv2);
     free(argv3);
+    free(argv4);
   }
   else {
     alertError();
