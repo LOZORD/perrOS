@@ -53,11 +53,11 @@ found:
     return 0;
   }
   sp = p->kstack + KSTACKSIZE;
-  
+
   // Leave room for trap frame.
   sp -= sizeof *p->tf;
   p->tf = (struct trapframe*)sp;
-  
+
   // Set up new context to start executing at forkret,
   // which returns to trapret.
   sp -= 4;
@@ -77,7 +77,7 @@ userinit(void)
 {
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
-  
+
   p = allocproc();
   acquire(&ptable.lock);
   initproc = p;
@@ -98,6 +98,9 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
+
+  p->strideData.numTickets = 10;
+
   release(&ptable.lock);
 }
 
@@ -107,7 +110,7 @@ int
 growproc(int n)
 {
   uint sz;
-  
+
   sz = proc->sz;
   if(n > 0){
     if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0)
@@ -152,7 +155,7 @@ fork(void)
     if(proc->ofile[i])
       np->ofile[i] = filedup(proc->ofile[i]);
   np->cwd = idup(proc->cwd);
- 
+
   pid = np->pid;
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
@@ -322,7 +325,7 @@ forkret(void)
 {
   // Still holding ptable.lock from scheduler.
   release(&ptable.lock);
-  
+
   // Return to "caller", actually trapret (see allocproc).
 }
 
@@ -425,7 +428,7 @@ procdump(void)
   struct proc *p;
   char *state;
   uint pc[10];
-  
+
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
@@ -439,8 +442,28 @@ procdump(void)
       for(i=0; i<10 && pc[i] != 0; i++)
         cprintf(" %p", pc[i]);
     }
+
+    //print the stride data
+    cprintf("\n\tSTRIDE DATA FOR %s\n", p->name);
+    cprintf("\t\tNUM TICKETS:\t%d\n", p->strideData.numTickets);
+    cprintf("\t\tSTRIDE VAL :\t%d\n", p->strideData.strideVal);
+    cprintf("\t\tPASS   VAL :\t%d\n", p->strideData.passVal);
+
     cprintf("\n");
   }
 }
 
-
+int proc_settickets (int tickets, struct proc * proc)
+{
+  if ((10 <= tickets && tickets <= 150) && (tickets % 10 == 0))
+  {
+    acquire(&ptable.lock);
+    proc->strideData.numTickets = tickets;
+    release(&ptable.lock);
+    return 0;
+  }
+  else
+  {
+    return -1;
+  }
+}

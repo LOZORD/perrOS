@@ -88,3 +88,14 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int sys_settickets (void)
+{
+  int tickets, ret;
+  tickets = argint(0, &tickets);
+  acquire(&tickslock);
+  //pass a pointer to the calling proc
+  ret = proc_settickets(tickets, proc);
+  release(&tickslock);
+  return ret;
+}
