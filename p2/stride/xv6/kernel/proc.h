@@ -83,7 +83,15 @@ struct proc {
   StrideData strideData;       // Stride data used in scheduler
 };
 
+struct pstat {
+  int strideVal;
+  int passVal;
+  int numTickets;
+  int pid;
+};
+
 int proc_settickets (int tickets, struct proc * proc);
+int proc_getpinfo (struct pstat * p);
 
 // Process memory is laid out contiguously, low addresses first:
 //   text

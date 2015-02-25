@@ -110,3 +110,16 @@ int sys_procdump(void)
   procdump();
   return 0;
 }
+
+int sys_getpinfo(void)
+{
+  struct pstat * p;
+  if (argptr(0, (char **) &p, sizeof(*p)) < 0 || !p)
+  {
+    return -1;
+  }
+  else
+  {
+    return proc_getpinfo(p);
+  }
+}

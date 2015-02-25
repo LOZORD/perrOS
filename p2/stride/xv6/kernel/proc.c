@@ -469,3 +469,32 @@ int proc_settickets (int tickets, struct proc * proc)
     return -1;
   }
 }
+
+int proc_getpinfo (struct pstat * pStatPtr)
+{
+  int i;
+  acquire(&ptable.lock);
+  for(i = 0; i < NPROC; i++)
+  {
+    if ((pStatPtr + i) != NULL && (ptable.proc + i) != NULL)
+    {
+      if (ptable.proc[i].state == UNUSED)
+      {
+        continue;
+      }
+      else
+      {
+        pStatPtr[i].pid = ptable.proc[i].pid;
+        pStatPtr[i].numTickets = ptable.proc[i].strideData.numTickets;
+        pStatPtr[i].passVal = ptable.proc[i].strideData.passVal;
+        pStatPtr[i].strideVal = ptable.proc[i].strideData.strideVal;
+      }
+    }
+    else
+    {
+      return -1;
+    }
+  }
+  release(&ptable.lock);
+  return 0;
+}
