@@ -159,6 +159,7 @@ fork(void)
   pid = np->pid;
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
+  np->strideData.numTickets = 10;
   return pid;
 }
 
@@ -455,7 +456,8 @@ procdump(void)
 
 int proc_settickets (int tickets, struct proc * proc)
 {
-  if ((10 <= tickets && tickets <= 150) && (tickets % 10 == 0))
+  //cprintf("\t\t\t\tGOT tickets AS %d\n\n", tickets);
+  if (proc && (10 <= tickets && tickets <= 150) && (tickets % 10 == 0))
   {
     acquire(&ptable.lock);
     proc->strideData.numTickets = tickets;

@@ -60,7 +60,7 @@ sys_sleep(void)
 {
   int n;
   uint ticks0;
-  
+
   if(argint(0, &n) < 0)
     return -1;
   acquire(&tickslock);
@@ -82,7 +82,7 @@ int
 sys_uptime(void)
 {
   uint xticks;
-  
+
   acquire(&tickslock);
   xticks = ticks;
   release(&tickslock);
@@ -92,10 +92,21 @@ sys_uptime(void)
 int sys_settickets (void)
 {
   int tickets, ret;
-  tickets = argint(0, &tickets);
+
+  if (argint(0, &tickets) < 0)
+  {
+    return -1;
+  }
+
   acquire(&tickslock);
   //pass a pointer to the calling proc
   ret = proc_settickets(tickets, proc);
   release(&tickslock);
   return ret;
+}
+
+int sys_procdump(void)
+{
+  procdump();
+  return 0;
 }

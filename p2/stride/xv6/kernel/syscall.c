@@ -96,6 +96,7 @@ static int (*syscalls[])(void) = {
 [SYS_mknod]   sys_mknod,
 [SYS_open]    sys_open,
 [SYS_pipe]    sys_pipe,
+[SYS_procdump] sys_procdump,
 [SYS_read]    sys_read,
 [SYS_sbrk]    sys_sbrk,
 [SYS_settickets] sys_settickets,

@@ -25,6 +25,8 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int settickets (int tickets);
+int procdump (void);
 
 // user library functions (ulib.c)
 int stat(char*, struct stat*);
