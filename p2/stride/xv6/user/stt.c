@@ -4,10 +4,11 @@
 #define NPROC 64
 
 struct pstat {
-  int strideVal;
-  int passVal;
-  int numTickets;
+  unsigned int strideVal;
+  unsigned int passVal;
+  unsigned int numTickets;
   int pid;
+  short inuse;
 };
 
 void printPStat (struct pstat * p);
@@ -62,16 +63,25 @@ int main (int argc, char ** argv)
 
 void printPStat (struct pstat * p)
 {
+  printf(1, "\n\tPID: %d\n", p->pid);
+  printf(1, "\n\tIN USE: %s\n", p->inuse ? "YES" : "NO");
+  printf(1, "\n\tNUM TICKETS: %d\n", p->numTickets);
+  printf(1, "\n\tPASS VAL: %d\n", p->passVal);
+  printf(1, "\n\tSTRIDE VAL: %d\n", p->strideVal);
+  printf(1, "\n\t*****---*****\n");
+  /*
   if (p->numTickets != 0)
   {
     printf(1, "\n\tPID: %d\n", p->pid);
+    printf(1, "\n\tIN USE: %s\n", p->inuse ? "YES" : "NO");
     printf(1, "\n\tNUM TICKETS: %d\n", p->numTickets);
     printf(1, "\n\tPASS VAL: %d\n", p->passVal);
     printf(1, "\n\tSTRIDE VAL: %d\n", p->strideVal);
-    printf(1, "\n\t*****\t*****\n");
+    printf(1, "\n\t*****---*****\n");
   }
   else
   {
     //it's unused or something
   }
+  */
 }

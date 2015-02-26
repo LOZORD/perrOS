@@ -84,10 +84,11 @@ struct proc {
 };
 
 struct pstat {
-  int strideVal;
-  int passVal;
-  int numTickets;
+  unsigned int strideVal;
+  unsigned int passVal;
+  unsigned int numTickets;
   int pid;
+  short inuse;
 };
 
 int proc_settickets (int tickets, struct proc * proc);

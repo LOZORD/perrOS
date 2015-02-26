@@ -480,14 +480,15 @@ int proc_getpinfo (struct pstat * pStatPtr)
     {
       if (ptable.proc[i].state == UNUSED)
       {
-        continue;
+        pStatPtr[i].inuse       = 0;
       }
       else
       {
-        pStatPtr[i].pid = ptable.proc[i].pid;
-        pStatPtr[i].numTickets = ptable.proc[i].strideData.numTickets;
-        pStatPtr[i].passVal = ptable.proc[i].strideData.passVal;
-        pStatPtr[i].strideVal = ptable.proc[i].strideData.strideVal;
+        pStatPtr[i].pid         = ptable.proc[i].pid;
+        pStatPtr[i].numTickets  = ptable.proc[i].strideData.numTickets;
+        pStatPtr[i].passVal     = ptable.proc[i].strideData.passVal;
+        pStatPtr[i].strideVal   = ptable.proc[i].strideData.strideVal;
+        pStatPtr[i].inuse       = 1;
       }
     }
     else
