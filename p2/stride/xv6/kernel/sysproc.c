@@ -4,6 +4,7 @@
 #include "param.h"
 #include "mmu.h"
 #include "proc.h"
+#include "pstat.h"
 #include "sysfunc.h"
 
 int

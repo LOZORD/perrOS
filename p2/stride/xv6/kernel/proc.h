@@ -10,6 +10,7 @@
 #define SEG_TSS   6  // this process's task state
 #define NSEGS     7
 
+struct pstat;
 // Per-CPU state
 struct cpu {
   uchar id;                    // Local APIC ID; index into cpus[] below
@@ -63,6 +64,7 @@ typedef struct __stride_data {
   int strideVal; //TODO make long?
   int passVal;
   int numTickets;
+  int n_schedule;
 } StrideData;
 
 // Per-process state
@@ -81,14 +83,6 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   StrideData strideData;       // Stride data used in scheduler
-};
-
-struct pstat {
-  unsigned int strideVal;
-  unsigned int passVal;
-  unsigned int numTickets;
-  int pid;
-  short inuse;
 };
 
 int proc_settickets (int tickets, struct proc * proc);

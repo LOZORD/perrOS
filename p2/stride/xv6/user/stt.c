@@ -1,15 +1,8 @@
 #include "types.h"
 #include "stat.h"
 #include "user.h"
+#include "pstat.h"
 #define NPROC 64
-
-struct pstat {
-  unsigned int strideVal;
-  unsigned int passVal;
-  unsigned int numTickets;
-  int pid;
-  short inuse;
-};
 
 void printPStat (struct pstat * p);
 
@@ -31,7 +24,8 @@ int main (int argc, char ** argv)
 
   for (i = 0; i < NPROC; i++)
   {
-    printPStat(pinfoArr + i);
+    if(pinfoArr[i].inuse)
+      printPStat(pinfoArr + i);
   }
 
   rc = settickets(10);
@@ -56,18 +50,21 @@ int main (int argc, char ** argv)
 
   for (i = 0; i < NPROC; i++)
   {
-    printPStat(pinfoArr + i);
+    if(pinfoArr[i].inuse)
+      printPStat(pinfoArr + i);
   }
   exit();
 }
 
 void printPStat (struct pstat * p)
 {
+  printf(1, "\n\tNAME: %s\n", p->name);
   printf(1, "\n\tPID: %d\n", p->pid);
   printf(1, "\n\tIN USE: %s\n", p->inuse ? "YES" : "NO");
-  printf(1, "\n\tNUM TICKETS: %d\n", p->numTickets);
-  printf(1, "\n\tPASS VAL: %d\n", p->passVal);
-  printf(1, "\n\tSTRIDE VAL: %d\n", p->strideVal);
+  printf(1, "\n\tNUM TICKETS: %d\n", p->tickets);
+  printf(1, "\n\tPASS VAL: %d\n", p->pass);
+  printf(1, "\n\tSTRIDE VAL: %d\n", p->stride);
+  printf(1, "\n\tNUM TIMES SCHEDULED: %d\n", p->n_schedule);
   printf(1, "\n\t*****---*****\n");
   /*
   if (p->numTickets != 0)

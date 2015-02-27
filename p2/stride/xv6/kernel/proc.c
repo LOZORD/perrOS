@@ -4,6 +4,7 @@
 #include "mmu.h"
 #include "x86.h"
 #include "proc.h"
+#include "pstat.h"
 #include "spinlock.h"
 
 struct {
@@ -484,11 +485,13 @@ int proc_getpinfo (struct pstat * pStatPtr)
       }
       else
       {
-        pStatPtr[i].pid         = ptable.proc[i].pid;
-        pStatPtr[i].numTickets  = ptable.proc[i].strideData.numTickets;
-        pStatPtr[i].passVal     = ptable.proc[i].strideData.passVal;
-        pStatPtr[i].strideVal   = ptable.proc[i].strideData.strideVal;
-        pStatPtr[i].inuse       = 1;
+        pStatPtr[i].pid       = ptable.proc[i].pid;
+        pStatPtr[i].tickets   = ptable.proc[i].strideData.numTickets;
+        pStatPtr[i].pass      = ptable.proc[i].strideData.passVal;
+        pStatPtr[i].stride    = ptable.proc[i].strideData.strideVal;
+        pStatPtr[i].inuse     = 1;
+        safestrcpy(pStatPtr[i].name, ptable.proc[i].name, sizeof(pStatPtr[i].name));
+        pStatPtr[i].n_schedule= ptable.proc[i].strideData.n_schedule;
       }
     }
     else
