@@ -9,6 +9,7 @@
 #define SEG_UDATA 5  // user data+stack
 #define SEG_TSS   6  // this process's task state
 #define NSEGS     7
+#define STRIDE    15000
 
 struct pstat;
 // Per-CPU state

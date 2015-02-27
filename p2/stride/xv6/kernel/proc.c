@@ -101,6 +101,7 @@ userinit(void)
   p->state = RUNNABLE;
 
   p->strideData.numTickets = 10;
+  p->strideData.n_schedule = 0;
 
   release(&ptable.lock);
 }
@@ -161,6 +162,9 @@ fork(void)
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
   np->strideData.numTickets = 10;
+  np->strideData.strideVal = STRIDE / 10;
+  np->strideData.passVal = 0;
+  np->strideData.n_schedule = 0;
   return pid;
 }
 
@@ -261,30 +265,47 @@ void
 scheduler(void) //TODO edit the scheduler code here to implement stride
 {
   struct proc *p;
+  struct proc *s;
 
   for(;;){
     // Enable interrupts on this processor.
     sti();
 
+    int minPass = -1;
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
 
+      if(minPass == -1){
+        s = p;
+        minPass = p->strideData.passVal;
+      }else if( p->strideData.passVal < minPass){
+        s = p;
+        minPass = p->strideData.passVal;
+      }
+
+    }
+
+    //only if we chose a proc to run
+    if(minPass != -1){
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+      proc = s;
+      switchuvm(s);
+      s->state = RUNNING;
+      //increase chosen procs sched count and pass value
+      s->strideData.n_schedule += 1;
+      s->strideData.passVal += s->strideData.strideVal;
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      proc = 0;
     }
+
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    proc = 0;
     release(&ptable.lock);
 
   }
@@ -462,6 +483,7 @@ int proc_settickets (int tickets, struct proc * proc)
   {
     acquire(&ptable.lock);
     proc->strideData.numTickets = tickets;
+    proc->strideData.strideVal = STRIDE / tickets;
     release(&ptable.lock);
     return 0;
   }

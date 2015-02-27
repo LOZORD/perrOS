@@ -11,16 +11,14 @@ int main (int argc, char ** argv)
   int rc;
   struct pstat pinfoArr [NPROC];
 
-  printf(1,"Hello world!\n\n");
-  procdump();
-
-  rc = settickets(150);
+  rc = settickets(50);
+  int i;
+  /*
   procdump();
   printf(1, "FOR SETTICKETS 150, GOT RC OF %d\n", rc);
 
   getpinfo(pinfoArr);
 
-  int i;
 
   for (i = 0; i < NPROC; i++)
   {
@@ -32,7 +30,6 @@ int main (int argc, char ** argv)
   procdump();
   printf(1, "FOR SETTICKETS 10, GOT RC OF %d\n", rc);
   
-  /*
   rc = settickets(160);
   procdump();
   printf(1, "FOR SETTICKETS 160, GOT RC OF %d\n", rc);
