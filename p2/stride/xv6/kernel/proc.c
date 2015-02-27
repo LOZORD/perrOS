@@ -262,7 +262,7 @@ wait(void)
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
 void
-scheduler(void) //TODO edit the scheduler code here to implement stride
+scheduler(void) //XXX
 {
   struct proc *p;
   struct proc *s;
@@ -297,8 +297,8 @@ scheduler(void) //TODO edit the scheduler code here to implement stride
       switchuvm(s);
       s->state = RUNNING;
       //increase chosen procs sched count and pass value
-      s->strideData.n_schedule += 1;
-      s->strideData.passVal += s->strideData.strideVal;
+      (s->strideData.n_schedule) += 1;
+      (s->strideData.passVal) += (s->strideData.strideVal);
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
     }

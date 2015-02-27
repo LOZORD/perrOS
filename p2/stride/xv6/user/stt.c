@@ -13,35 +13,6 @@ int main (int argc, char ** argv)
 
   rc = settickets(50);
   int i;
-  /*
-  procdump();
-  printf(1, "FOR SETTICKETS 150, GOT RC OF %d\n", rc);
-
-  getpinfo(pinfoArr);
-
-
-  for (i = 0; i < NPROC; i++)
-  {
-    if(pinfoArr[i].inuse)
-      printPStat(pinfoArr + i);
-  }
-
-  rc = settickets(10);
-  procdump();
-  printf(1, "FOR SETTICKETS 10, GOT RC OF %d\n", rc);
-  
-  rc = settickets(160);
-  procdump();
-  printf(1, "FOR SETTICKETS 160, GOT RC OF %d\n", rc);
-  
-  rc = settickets(0);
-  procdump();
-  printf(1, "FOR SETTICKETS 0, GOT RC OF %d\n", rc);
-
-  rc = settickets(11);
-  procdump();
-  printf(1, "FOR SETTICKETS 11, GOT RC OF %d\n", rc);
-  */
 
   getpinfo(pinfoArr);
 
@@ -50,6 +21,59 @@ int main (int argc, char ** argv)
     if(pinfoArr[i].inuse)
       printPStat(pinfoArr + i);
   }
+
+  printf(1,"\t\tFORKING AND SLEEPING\t\t\n");
+
+  int pid1, pid2;
+  pid2 = -1;
+
+  if ((pid1 = fork()) < 0)
+  {
+    printf(1,"FORK ERROR\n");
+    exit();
+  }
+
+  //parent also forks into child2
+  if (pid1 != 0)
+  {
+    if ((pid2 = fork()) < 0)
+    {
+      printf(1,"FORK ERROR\n");
+      exit();
+    }
+  }
+
+  //child1 should run 3 times as often as parent
+  if (pid1 == 0 && pid2 != 0) //we are in child1
+  {
+    settickets(150);
+  }
+  //child2 should run the slowest
+  if (pid2 == 0) //we are in child2
+  {
+    settickets(10);
+  }
+
+  sleep(1000); //sleep for 10 seconds
+
+
+  //parent waits for child to complete
+  if (pid1 != 0 && pid2 != 0)
+  {
+    wait();
+    wait();
+  }
+  else
+  {
+    getpinfo(pinfoArr);
+    for (i = 0; i < NPROC; i++)
+    {
+      if(pinfoArr[i].inuse)
+        printPStat(pinfoArr + i);
+    }
+  }
+
+
   exit();
 }
 
