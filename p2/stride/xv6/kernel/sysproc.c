@@ -114,13 +114,17 @@ int sys_procdump(void)
 
 int sys_getpinfo(void)
 {
-  struct pstat * p;
+  int rc;
+  struct pstat * p = NULL;
   if (argptr(0, (char **) &p, sizeof(*p)) < 0 || !p)
   {
     return -1;
   }
   else
   {
-    return proc_getpinfo(p);
+    acquire(&tickslock);
+    rc = proc_getpinfo(p);
+    release(&tickslock);
+    return rc;
   }
 }

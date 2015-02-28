@@ -7,6 +7,9 @@
 #include "pstat.h"
 #include "spinlock.h"
 
+//A global value used to track the latest minimum pass value
+unsigned long globalMinPassVal = 0;
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -100,7 +103,7 @@ userinit(void)
 
   p->state = RUNNABLE;
 
-  p->strideData.numTickets = 10;
+  p->strideData.numTickets = INIT_TICKET_VAL;
   p->strideData.n_schedule = 0;
 
   release(&ptable.lock);
@@ -161,9 +164,10 @@ fork(void)
   pid = np->pid;
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
-  np->strideData.numTickets = 10;
-  np->strideData.strideVal = STRIDE / 10;
-  np->strideData.passVal = 0;
+  np->strideData.numTickets = INIT_TICKET_VAL;
+  np->strideData.strideVal  = STRIDE / INIT_TICKET_VAL;
+  //used for countering creation starvation
+  np->strideData.passVal = globalMinPassVal;
   np->strideData.n_schedule = 0;
   return pid;
 }
@@ -271,28 +275,32 @@ scheduler(void) //XXX
     // Enable interrupts on this processor.
     sti();
 
-    int minPass = -1;
+    long minPass = -1;
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
+      if(p->state != RUNNABLE) {
         continue;
-
-      if(minPass == -1){
+      }
+      else if(minPass == -1){
         s = p;
         minPass = p->strideData.passVal;
-      }else if( p->strideData.passVal < minPass){
+        //cprintf("saw %d proc: %s with pass %d\n", p->pid, p->name, p->strideData.passVal);
+      }else if(p->strideData.passVal < minPass){
+        //cprintf("saw min %d proc: %s with pass %d\n", p->pid, p->name, p->strideData.passVal);
         s = p;
         minPass = p->strideData.passVal;
       }
-
     }
 
     //only if we chose a proc to run
     if(minPass != -1){
+      //cprintf("chose %d proc: %s with pass %d\n",s->pid, s->name, s->strideData.passVal);
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
+
+      globalMinPassVal = (unsigned long) minPass; //update the global with the current min
       proc = s;
       switchuvm(s);
       s->state = RUNNING;
@@ -301,13 +309,13 @@ scheduler(void) //XXX
       (s->strideData.passVal) += (s->strideData.strideVal);
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
+      //cprintf("\n\n");
     }
 
     // Process is done running for now.
     // It should have changed its p->state before coming back.
     proc = 0;
     release(&ptable.lock);
-
   }
 }
 
@@ -396,9 +404,13 @@ wakeup1(void *chan)
 {
   struct proc *p;
 
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if(p->state == SLEEPING && p->chan == chan) {
       p->state = RUNNABLE;
+      //done to counter wakeup starvation; fast-forward this proc's passVal
+      p->strideData.passVal = globalMinPassVal;
+    }
+  }
 }
 
 // Wake up all processes sleeping on chan.
@@ -471,6 +483,7 @@ procdump(void)
     cprintf("\t\tNUM TICKETS:\t%d\n", p->strideData.numTickets);
     cprintf("\t\tSTRIDE VAL :\t%d\n", p->strideData.strideVal);
     cprintf("\t\tPASS   VAL :\t%d\n", p->strideData.passVal);
+    cprintf("\t\t->TIMES RAN:\t%d\n", p->strideData.n_schedule);
 
     cprintf("\n");
   }
@@ -478,7 +491,6 @@ procdump(void)
 
 int proc_settickets (int tickets, struct proc * proc)
 {
-  //cprintf("\t\t\t\tGOT tickets AS %d\n\n", tickets);
   if (proc && (10 <= tickets && tickets <= 150) && (tickets % 10 == 0))
   {
     acquire(&ptable.lock);
@@ -496,6 +508,11 @@ int proc_settickets (int tickets, struct proc * proc)
 int proc_getpinfo (struct pstat * pStatPtr)
 {
   int i;
+
+  if (!(ptable.proc))
+  {
+    return -1;
+  }
   acquire(&ptable.lock);
   for(i = 0; i < NPROC; i++)
   {
@@ -509,7 +526,16 @@ int proc_getpinfo (struct pstat * pStatPtr)
       {
         pStatPtr[i].pid       = ptable.proc[i].pid;
         pStatPtr[i].tickets   = ptable.proc[i].strideData.numTickets;
-        pStatPtr[i].pass      = ptable.proc[i].strideData.passVal;
+        //pStatPtr[i].pass      = ptable.proc[i].strideData.passVal > MAX_INT;
+        if (ptable.proc[i].strideData.passVal < MAX_INT &&
+            (int)(ptable.proc[i].strideData.passVal) >= 0)
+        {
+          pStatPtr[i].pass = ptable.proc[i].strideData.passVal;
+        }
+        else
+        {
+          pStatPtr[i].pass = MAX_INT;
+        }
         pStatPtr[i].stride    = ptable.proc[i].strideData.strideVal;
         pStatPtr[i].inuse     = 1;
         safestrcpy(pStatPtr[i].name, ptable.proc[i].name, sizeof(pStatPtr[i].name));

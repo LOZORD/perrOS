@@ -10,6 +10,8 @@
 #define SEG_TSS   6  // this process's task state
 #define NSEGS     7
 #define STRIDE    15000
+#define MAX_INT   0x7FFFFFFFl
+#define INIT_TICKET_VAL 10
 
 struct pstat;
 // Per-CPU state
@@ -62,8 +64,8 @@ struct context {
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 typedef struct __stride_data {
-  int strideVal; //TODO make long?
-  int passVal;
+  int strideVal;
+  unsigned long passVal; //in order to delay overflow
   int numTickets;
   int n_schedule;
 } StrideData;
