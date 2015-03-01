@@ -59,7 +59,7 @@ int main (int argc, char ** argv)
     }
   }
 
-  sleep(100); //sleep for 10 seconds
+  sleep(100); //sleep for 1 second
 
   printf(1,"\tstarted longOp\n");
   int foo = longOp();
