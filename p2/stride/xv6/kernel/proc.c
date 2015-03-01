@@ -266,7 +266,7 @@ wait(void)
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
 void
-scheduler(void) //XXX
+scheduler(void)
 {
   struct proc *p;
   struct proc *s;
@@ -282,12 +282,7 @@ scheduler(void) //XXX
       if(p->state != RUNNABLE) {
         continue;
       }
-      else if(minPass == -1){
-        s = p;
-        minPass = p->strideData.passVal;
-        //cprintf("saw %d proc: %s with pass %d\n", p->pid, p->name, p->strideData.passVal);
-      }else if(p->strideData.passVal < minPass){
-        //cprintf("saw min %d proc: %s with pass %d\n", p->pid, p->name, p->strideData.passVal);
+      else if(minPass == -1 || p->strideData.passVal < minPass){
         s = p;
         minPass = p->strideData.passVal;
       }

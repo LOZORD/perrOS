@@ -10,7 +10,7 @@
 #define SEG_TSS   6  // this process's task state
 #define NSEGS     7
 #define STRIDE    15000
-#define MAX_INT   0x7FFFFFFFl
+#define MAX_INT   0x07FFFFFFl // the largest possible signed integer value (assuming 32 bits)
 #define INIT_TICKET_VAL 10
 
 struct pstat;

@@ -1,4 +1,3 @@
-
 #include "types.h"
 #include "stat.h"
 #include "user.h"
@@ -16,7 +15,7 @@ int main (int argc, char ** argv)
   for(i = 0; i < 6; i++){
       pid[i] = fork();
       if(pid[i] == 0){
-        switch (i) {  
+        switch (i) {
           case 0:
             settickets(10);
             break;
@@ -44,6 +43,7 @@ int main (int argc, char ** argv)
 
   int j;
   for(i = 0; i < 6; i++){
+    printf(1, "\t----- ROUND %d -----\n", i + 1);
     getpinfo(pinfoArr);
     for (j = 0; j < NPROC; j++)
     {
@@ -61,12 +61,8 @@ int main (int argc, char ** argv)
 
 void printPStat (struct pstat * p)
 {
-  //printf(1, "\n\tNAME: %s\n", p->name);
   printf(1, "\n\tPID: %d\n", p->pid);
-  //printf(1, "\n\tIN USE: %s\n", p->inuse ? "YES" : "NO");
   printf(1, "\n\tNUM TICKETS: %d\n", p->tickets);
-  //printf(1, "\n\tPASS VAL: %d\n", p->pass);
-  //printf(1, "\n\tSTRIDE VAL: %d\n", p->stride);
   printf(1, "\n\tNUM TIMES SCHEDULED: %d\n", p->n_schedule);
   printf(1, "\n\t*****---*****\n\n\n");
 }
