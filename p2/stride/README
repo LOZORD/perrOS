@@ -1,0 +1,30 @@
+Name: Leo Rudberg
+CSL-ID: leo
+Name: Nicholas Hyatt
+CSL-ID: hyatt 
+(Leave the second name and ID blank if working alone)
+(Do NOT suffix your CSL IDs with @cs.wisc.edu, the ID alone is sufficient)
+
+Implementation Details:
+
+First we implemented the syscalls `settickets` and `getpinfo`, in addition to
+a `procdump` call that uses the `procdump` function already available in
+`kernel/proc.c`. We did this for debugging reasons. We also decided to route
+all of our calls through `kernel/sysproc.c` -> `kernel/proc.c` in order to
+decouple syscalls from process and process table logic.
+
+We then wrote a test program called `user/stt.c`, which was used as our main
+testing utility for debugging and verifying our implementation. We also used
+it as a basis to write our `user/graph.c` program for graph data generation.
+
+After we verified our syscalls, we added the pstat struct file and began work
+on implementing the stride scheduler. The good thing about the stride scheduler
+is that it is easy to conceptualize. It just involves simple arithmetic and
+logic. We believe our implementation is very clear.
+
+As for the corner cases, we avoid pass value overflow by replacing the `int`
+field with a larger `unsigned long`. According to a Piazza post, and by some rough
+calculations on our part, it will be a VERY long time until the `unsigned long`
+overflows. For the other cases of process creation and wakeup causing
+starvation, we solve this by replacing the pass value of the new or lagging
+process with the value of the global minimum pass value.
