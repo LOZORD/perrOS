@@ -1,0 +1,40 @@
+//Graph explanation by Rudberg and Hyatt
+//Graphs created    by Hyatt
+
+GRAPHS INCLUDED:
+1) TimeVsScheduled.pdf
+2) Proportion.pdf
+
+We believe our stride implementation to be correct. Our test, which can be found
+in `xv6/user/graph.c`, first generates 6 processes through forking.
+
+Each process is given the following ticket counts:
+
+Proc 0 => 10 tickets  (minimum, should run the least)
+Proc 1 => 30
+Proc 2 => 50
+Proc 3 => 80
+Proc 4 => 110
+Proc 5 => 150 tickets (maximum, should run the most)
+
+We then send each process into an infinite loop to consume its quanta (10 ms,
+by assumption). Then, every minute, for five minutes, we gather pstat info on
+all running processes (we ran only this program in xv6, so only `init` and
+`sh` were the only other programs in the process table). It then prints the
+pstat data (especially the number of times the process has ran) for each
+in-use process (not `UNUSED`). We used the process datas' number of times
+scheduled to build our graph. Thus, we compare a processe's number of tickets
+to the number of times it has been scheduled.
+
+We see that as the processes are ran, there is a nice spread of priority for
+the given tickets. In TimeVsScheduled, we see that Proc 5 runs the most and
+Proc 0 runs the least often, as consistent with the proposed implementation.
+
+And, according to Proportion, we see that the rate at which the processes run
+over time is constant, i.e. in the long run, Proc 5 will ALWAYS run more
+frequently than Proc 4 and below. We also see little variation of proportion
+within each process.
+
+All of these findings support the "fairness" of our scheduler and its ability
+to ration computation time based on tickets, and therefore support our correct
+implementation.
