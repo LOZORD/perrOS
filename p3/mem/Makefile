@@ -1,11 +1,13 @@
 all: mem.c test_mem.c lmem
-	gcc -lmem -L. -o test_mem test_mem.c -Wall -Werror
+	gcc -lmem -L. -o run_test_mem test_mem.c -Wall -Werror
 
 lmem:
 	gcc -c -fpic mem.c -Wall -Werror
 	gcc -shared -o libmem.so mem.o
 
 clean:
-	rm test_mem
-	rm libmem.so
-	rm mem.o
+	rm run_test_mem mem.o libmem.so
+
+setenv:
+	export LD_LIBRARY_PATH=$PWD
+	echo $LD_LIBRARY_PATH

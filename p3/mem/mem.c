@@ -63,7 +63,7 @@ void * Mem_Init(int sizeOfRegion, int slabSize)
   //int nextFitRegionSize = sizeOfRegion - slabRegionSize;
 
   //we will actually have less memory because of embedded nodes
-  void * regionStartPtr = mmap(NULL, sizeOfRegion, PROT_READ | PROT_WRITE, MAP_SHARED, fdin, 0);//mmap(sizeOfRegion);
+  void * regionStartPtr = mmap(NULL, sizeOfRegion, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);//mmap(sizeOfRegion);
 
   if (regionStartPtr == MAP_FAILED)
   {
