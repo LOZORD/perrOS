@@ -35,9 +35,9 @@ int fdin;
 
 void * Mem_Init(int sizeOfRegion, int slabSize)
 {
-
+  //printf("\tGOT region: %d, slab: %d\n", sizeOfRegion, slabSize);
   //sanity check
-  if (sizeOfRegion < 4 || slabSize < 1 || sizeOfRegion < slabSize)
+  if (sizeOfRegion < 4 || slabSize < 1 || sizeOfRegion < slabSize || (sizeOfRegion / 4) < slabSize)
   {
     return NULL;
   }
@@ -63,7 +63,7 @@ void * Mem_Init(int sizeOfRegion, int slabSize)
   //int nextFitRegionSize = sizeOfRegion - slabRegionSize;
 
   //we will actually have less memory because of embedded nodes
-  void * regionStartPtr = mmap(NULL, sizeOfRegion, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);//mmap(sizeOfRegion);
+  void * regionStartPtr = mmap(NULL, (size_t) sizeOfRegion, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
 
   if (regionStartPtr == MAP_FAILED)
   {
@@ -80,6 +80,7 @@ void * Mem_Init(int sizeOfRegion, int slabSize)
   void * nextFitRegionStartPtr = regionStartPtr + slabRegionSize;
   myAllocators.nextFitAllocator.freeHead = (struct FreeHeader *) (nextFitRegionStartPtr);
   myAllocators.nextFitAllocator.allocatedHead = (struct AllocatedHeader *) (nextFitRegionStartPtr);
+  myAllocators.nextFitAllocator.nextPtr = (struct AllocatedHeader *) (nextFitRegionStartPtr); //XXX correct type?
 
   return regionStartPtr;
 }
