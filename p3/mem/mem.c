@@ -24,6 +24,10 @@ struct memAllocators
 {
   struct slabAllocator slabAllocator;
   struct nextFitAllocator nextFitAllocator;
+  void * regionStartPtr;
+  void * nextFitRegionStartPtr;
+  int slabUnitSize;
+  int sizeOfRegion;
 };
 
 struct memAllocators myAllocators;
@@ -32,9 +36,6 @@ pthread_mutex_t mainAllocatorLock = PTHREAD_MUTEX_INITIALIZER;
 static volatile int initializedOnce = 0;
 
 int fdin;
-
-int slabUnitSize = 0;
-void * nextFitRegionStartPtr;
 
 void * Mem_Init(int sizeOfRegion, int slabSize)
 {
@@ -60,7 +61,8 @@ void * Mem_Init(int sizeOfRegion, int slabSize)
   //assert(sizeOfRegion % 4 == 0);
   //
 
-  slabUnitSize = slabSize;
+  myAllocators.slabUnitSize = slabSize;
+  myAllocators.sizeOfRegion = sizeOfRegion;
 
   int slabRegionSize = sizeOfRegion / 4;
 
@@ -69,9 +71,10 @@ void * Mem_Init(int sizeOfRegion, int slabSize)
   //int nextFitRegionSize = sizeOfRegion - slabRegionSize;
 
   //we will actually have less memory because of embedded nodes
-  void * regionStartPtr = mmap(NULL, (size_t) sizeOfRegion, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+  myAllocators.regionStartPtr =
+    mmap(NULL, (size_t) sizeOfRegion, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
 
-  if (regionStartPtr == MAP_FAILED)
+  if (myAllocators.regionStartPtr == MAP_FAILED)
   {
     fprintf(stderr, "Couldn't get memory!\n");
     exit(EXIT_FAILURE);
@@ -79,17 +82,17 @@ void * Mem_Init(int sizeOfRegion, int slabSize)
 
   //init the slabAllocator
   myAllocators.slabAllocator.slabLock = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
-  myAllocators.slabAllocator.slabHead = (struct FreeHeader *) regionStartPtr;
-  myAllocators.slabAllocator.slabHead->length = (sizeof(struct FreeHeader)) + slabUnitSize;
+  myAllocators.slabAllocator.slabHead = (struct FreeHeader *) myAllocators.regionStartPtr;
+  myAllocators.slabAllocator.slabHead->length = (sizeof(struct FreeHeader)) + myAllocators.slabUnitSize;
 
   //init the nextFitAllocator
   myAllocators.nextFitAllocator.nextFitLock = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
-  nextFitRegionStartPtr = regionStartPtr + slabRegionSize;
-  myAllocators.nextFitAllocator.freeHead = (struct FreeHeader *) (nextFitRegionStartPtr);
-  myAllocators.nextFitAllocator.allocatedHead = (struct AllocatedHeader *) (nextFitRegionStartPtr);
-  myAllocators.nextFitAllocator.nextPtr = (struct AllocatedHeader *) (nextFitRegionStartPtr); //XXX correct type?
+  myAllocators.nextFitRegionStartPtr = myAllocators.regionStartPtr + slabRegionSize;
+  myAllocators.nextFitAllocator.freeHead = (struct FreeHeader *) (myAllocators.nextFitRegionStartPtr);
+  myAllocators.nextFitAllocator.allocatedHead = (struct AllocatedHeader *) (myAllocators.nextFitRegionStartPtr);
+  myAllocators.nextFitAllocator.nextPtr = (struct AllocatedHeader *) (myAllocators.nextFitRegionStartPtr); //XXX correct type?
 
-  return regionStartPtr;
+  return myAllocators.regionStartPtr;
 }
 
 void * Mem_Alloc (int size)
@@ -99,7 +102,38 @@ void * Mem_Alloc (int size)
 
 int Mem_Free (void * ptr)
 {
-  return -1;
+  if (ptr == NULL)
+  {
+    fprintf(stderr, "SEGFAULT\n");
+    return -1;
+  }
+
+  if (ptr < myAllocators.regionStartPtr ||
+    ptr > (myAllocators.regionStartPtr + myAllocators.sizeOfRegion))
+  {
+    fprintf(stderr, "SEGFAULT\n");
+    return -1;
+  }
+
+  void * headerPtr = ptr - sizeof(struct AllocatedHeader);
+
+  if (((struct AllocatedHeader *)(headerPtr))->magic != (void *)MAGIC)
+  {
+    return -1;
+  }
+
+  int isSlabAllocated = headerPtr < myAllocators.nextFitRegionStartPtr ? 1 : 0;
+
+  if (isSlabAllocated)
+  {
+    //TODO: slab free
+  }
+  else
+  {
+    //TODO: next fit free
+  }
+
+  return 0;
 }
 
 void Mem_Dump()
@@ -113,7 +147,7 @@ void Mem_Dump()
   {
     fprintf(stderr, "\tFREEHEADER at %p:\tLENGTH = %d\n", itr, itr->length);
 
-    if (((void *)itr->next) >= ((void *)nextFitRegionStartPtr))
+    if (((void *)itr->next) >= ((void *)myAllocators.nextFitRegionStartPtr))
     {
       fprintf(stderr, "--ENTERING NEXT FIT REGION--\n");
     }
