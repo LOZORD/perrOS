@@ -30,6 +30,8 @@ int main (int argc, char ** argv)
 
   assert(heapPtr == NULL); // should fail due to called twice
 
+  Mem_Dump();
+
   //TODO: use threading to test mutex
 
   printf("TESTS PASS!\n");

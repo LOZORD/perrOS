@@ -9,5 +9,6 @@ clean:
 	rm run_test_mem mem.o libmem.so
 
 setenv:
-	export LD_LIBRARY_PATH=$PWD
-	echo $LD_LIBRARY_PATH
+	#export LD_LIBRARY_PATH=[DOLLAR_SIGN]PWD
+	#echo [DOLLAR_SIGN]LD_LIBRARY_PATH
+	echo "run these commands above"

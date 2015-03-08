@@ -8,7 +8,7 @@
 
 struct slabAllocator
 {
-  struct FreeHeader * freeHead;
+  struct FreeHeader * slabHead; //XXX: perhaps AllocatedHeader?
   pthread_mutex_t slabLock;
 };
 
@@ -29,9 +29,12 @@ struct memAllocators
 struct memAllocators myAllocators;
 pthread_mutex_t mainAllocatorLock = PTHREAD_MUTEX_INITIALIZER;
 
-static volatile int allocatedOnce = 0;
+static volatile int initializedOnce = 0;
 
 int fdin;
+
+int slabUnitSize = 0;
+void * nextFitRegionStartPtr;
 
 void * Mem_Init(int sizeOfRegion, int slabSize)
 {
@@ -44,17 +47,20 @@ void * Mem_Init(int sizeOfRegion, int slabSize)
 
   //first check if we have allocated yet
   pthread_mutex_lock(&mainAllocatorLock);
-  if (allocatedOnce)
+  if (initializedOnce)
   {
     return NULL;
   }
   else
   {
-    allocatedOnce = 1;
+    initializedOnce = 1;
   }
   pthread_mutex_unlock(&mainAllocatorLock);
 
   //assert(sizeOfRegion % 4 == 0);
+  //
+
+  slabUnitSize = slabSize;
 
   int slabRegionSize = sizeOfRegion / 4;
 
@@ -73,14 +79,47 @@ void * Mem_Init(int sizeOfRegion, int slabSize)
 
   //init the slabAllocator
   myAllocators.slabAllocator.slabLock = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
-  myAllocators.slabAllocator.freeHead = (struct FreeHeader *) regionStartPtr;
+  myAllocators.slabAllocator.slabHead = (struct FreeHeader *) regionStartPtr;
+  myAllocators.slabAllocator.slabHead->length = (sizeof(struct FreeHeader)) + slabUnitSize;
 
   //init the nextFitAllocator
   myAllocators.nextFitAllocator.nextFitLock = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
-  void * nextFitRegionStartPtr = regionStartPtr + slabRegionSize;
+  nextFitRegionStartPtr = regionStartPtr + slabRegionSize;
   myAllocators.nextFitAllocator.freeHead = (struct FreeHeader *) (nextFitRegionStartPtr);
   myAllocators.nextFitAllocator.allocatedHead = (struct AllocatedHeader *) (nextFitRegionStartPtr);
   myAllocators.nextFitAllocator.nextPtr = (struct AllocatedHeader *) (nextFitRegionStartPtr); //XXX correct type?
 
   return regionStartPtr;
+}
+
+void * Mem_Alloc (int size)
+{
+  return NULL;
+}
+
+int Mem_Free (void * ptr)
+{
+  return -1;
+}
+
+void Mem_Dump()
+{
+  //lock the entire segment
+  pthread_mutex_lock(&mainAllocatorLock);
+
+  struct FreeHeader * itr = myAllocators.slabAllocator.slabHead;
+
+  while(itr != NULL)
+  {
+    fprintf(stderr, "\tFREEHEADER at %p:\tLENGTH = %d\n", itr, itr->length);
+
+    if (((void *)itr->next) >= ((void *)nextFitRegionStartPtr))
+    {
+      fprintf(stderr, "--ENTERING NEXT FIT REGION--\n");
+    }
+
+    itr = itr->next;
+  }
+
+  pthread_mutex_unlock(&mainAllocatorLock);
 }
