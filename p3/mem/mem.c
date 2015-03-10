@@ -17,8 +17,6 @@ void * slabPop ();
 
 struct slabAllocator
 {
-  //struct FreeHeader * slabHead; //XXX: perhaps AllocatedHeader?
-  //struct freeSlabNode * slabHead;
   pthread_mutex_t slabLock;
 };
 
@@ -50,7 +48,6 @@ int fdin;
 
 void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
 {
-  //printf("\tGOT region: %d, slab: %d\n", sizeOfRegion, slabSize);
   //sanity check
   if (sizeOfRegion < 4 || slabSize < 1 || sizeOfRegion < slabSize || (sizeOfRegion / 4) < slabSize)
   {
@@ -69,8 +66,7 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
   }
   pthread_mutex_unlock(&mainAllocatorLock);
 
-  //assert(sizeOfRegion % 4 == 0);
-  //
+  assert(sizeOfRegion % 4 == 0);
 
   myAllocators.slabUnitSize = slabSize;
   myAllocators.sizeOfRegion = sizeOfRegion;
@@ -79,11 +75,9 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
 
   //TODO: check that we use all of slab region (ie no remainder?)
 
-  //int nextFitRegionSize = sizeOfRegion - slabRegionSize;
-
   //we will actually have less memory because of embedded nodes
   myAllocators.regionStartPtr =
-    mmap(NULL, (size_t) sizeOfRegion, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+    mmap(NULL, (size_t) sizeOfRegion, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
   if (myAllocators.regionStartPtr == MAP_FAILED)
   {
@@ -93,20 +87,16 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
 
   //init the slabAllocator
   myAllocators.slabAllocator.slabLock = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
-  //myAllocators.slabAllocator.slabHead = (struct freeSlabNode *) myAllocators.regionStartPtr;
-  myAllocators.topOfSlabStack = (struct freeSlabNode *) myAllocators.regionStartPtr;
-  myAllocators.topOfSlabStack->next = NULL;
+  myAllocators.topOfSlabStack = NULL;
 
   myAllocators.nextFitRegionStartPtr = myAllocators.regionStartPtr + slabRegionSize;
 
-  void * itr = myAllocators.topOfSlabStack;
-  fprintf(stderr,"itr init val:\t\t%p\n", itr);
-  fprintf(stderr,"nf ptr:\t\t%p\n", myAllocators.nextFitRegionStartPtr);
+  void * itr = myAllocators.nextFitRegionStartPtr-slabSize;
 
-  while (itr < myAllocators.nextFitRegionStartPtr) //myAllocators.nextFitRegionStartPtr)
+  while (itr >= myAllocators.regionStartPtr)
   {
     slabPush((struct freeSlabNode *)(itr));
-    itr += slabSize;
+    itr -= slabSize;
   }
 
   //init the nextFitAllocator
@@ -114,6 +104,7 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
   myAllocators.nextFitAllocator.freeHead = (struct FreeHeader *) (myAllocators.nextFitRegionStartPtr);
   myAllocators.nextFitAllocator.allocatedHead = (struct AllocatedHeader *) (myAllocators.nextFitRegionStartPtr);
   myAllocators.nextFitAllocator.nextPtr = (struct AllocatedHeader *) (myAllocators.nextFitRegionStartPtr); //XXX correct type?
+
 
   return myAllocators.regionStartPtr;
 }
@@ -196,22 +187,7 @@ void * slabPush (struct freeSlabNode * nodeToAdd)
 {
   assert(nodeToAdd != NULL);
   pthread_mutex_lock(&(myAllocators.slabAllocator.slabLock));
-  /*
-  if (myAllocators.topOfSlabStack <= myAllocators.regionStartPtr) //stack overflow
-  {
-    return NULL; //we can't push anything more!
-  }
-  */
-
-  if (myAllocators.topOfSlabStack == nodeToAdd)
-  {
-    nodeToAdd->next = NULL;
-  }
-  else
-  {
-    nodeToAdd->next = myAllocators.topOfSlabStack;
-  }
-
+  nodeToAdd->next = myAllocators.topOfSlabStack;
   myAllocators.topOfSlabStack = nodeToAdd;
   pthread_mutex_unlock(&(myAllocators.slabAllocator.slabLock));
   return myAllocators.topOfSlabStack;
