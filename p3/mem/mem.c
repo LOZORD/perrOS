@@ -6,10 +6,14 @@
 #include <pthread.h>
 #include "mymem.h"
 
+//declarations
 struct freeSlabNode
 {
   struct freeSlabNode * next;
-}
+};
+
+void * slabPush (struct freeSlabNode * nodeToAdd);
+void * slabPop ();
 
 struct slabAllocator
 {
@@ -90,21 +94,23 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
   //init the slabAllocator
   myAllocators.slabAllocator.slabLock = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
   //myAllocators.slabAllocator.slabHead = (struct freeSlabNode *) myAllocators.regionStartPtr;
-  myAllocators.topOfSlabStack = myAllocators.regionStartPtr;
+  myAllocators.topOfSlabStack = (struct freeSlabNode *) myAllocators.regionStartPtr;
   myAllocators.topOfSlabStack->next = NULL;
 
-  int numSlabs = slabRegionSize / slabSize;
-  void * itr = myAllocators.slabAllocator.slabHead;
+  myAllocators.nextFitRegionStartPtr = myAllocators.regionStartPtr + slabRegionSize;
 
-  while (itr < myAllocators.nextFitRegionStartPtr)
+  void * itr = myAllocators.topOfSlabStack;
+  fprintf(stderr,"itr init val:\t\t%p\n", itr);
+  fprintf(stderr,"nf ptr:\t\t%p\n", myAllocators.nextFitRegionStartPtr);
+
+  while (itr < myAllocators.nextFitRegionStartPtr) //myAllocators.nextFitRegionStartPtr)
   {
-    slabPush((struct freeSlabNode **)&itr);
+    slabPush((struct freeSlabNode *)(itr));
     itr += slabSize;
   }
 
   //init the nextFitAllocator
   myAllocators.nextFitAllocator.nextFitLock = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
-  myAllocators.nextFitRegionStartPtr = myAllocators.regionStartPtr + slabRegionSize;
   myAllocators.nextFitAllocator.freeHead = (struct FreeHeader *) (myAllocators.nextFitRegionStartPtr);
   myAllocators.nextFitAllocator.allocatedHead = (struct AllocatedHeader *) (myAllocators.nextFitRegionStartPtr);
   myAllocators.nextFitAllocator.nextPtr = (struct AllocatedHeader *) (myAllocators.nextFitRegionStartPtr); //XXX correct type?
@@ -158,37 +164,62 @@ void Mem_Dump()
   //lock the entire segment
   pthread_mutex_lock(&mainAllocatorLock);
 
-  struct FreeHeader * itr = myAllocators.slabAllocator.slabHead;
+  struct freeSlabNode * slabItr = myAllocators.topOfSlabStack;
+  int slabCount = 0;
 
-  while(itr != NULL)
+  fprintf(stderr, "REGION START IS %p\n\n", myAllocators.regionStartPtr);
+
+  while (slabItr != NULL)
   {
-    fprintf(stderr, "\tFREEHEADER at %p:\tLENGTH = %d\n", itr, itr->length);
-
-    if (((void *)itr->next) >= ((void *)myAllocators.nextFitRegionStartPtr))
-    {
-      fprintf(stderr, "--ENTERING NEXT FIT REGION--\n");
-    }
-
-    itr = itr->next;
+    fprintf(stderr, "\tFREE SLAB at %p\n", slabItr);
+    slabItr = slabItr->next;
+    slabCount++;
   }
 
+  fprintf(stderr, "\n\nFOUND %d FREE SLABS\nENTERING NEXT FIT REGION\n", slabCount);
+
+  struct FreeHeader * nextFitItr = myAllocators.nextFitRegionStartPtr;
+  int nFCount = 0;
+
+  while (nextFitItr != NULL)
+  {
+    fprintf(stderr, "\tFREEHEADER at %p:\tLENGTH = %d\n", nextFitItr, nextFitItr->length);
+    nextFitItr = nextFitItr->next;
+    nFCount++;
+  }
+  fprintf(stderr, "\n\nFOUND %d NEXT FIT BLOCKS\n--DONE--\n", nFCount);
   pthread_mutex_unlock(&mainAllocatorLock);
 }
 
 
-void * slabPush (struct freeSlabNode ** nodeToAdd)
+void * slabPush (struct freeSlabNode * nodeToAdd)
 {
-  assert(nodeToAdd != NULL && *nodeToAdd != NULL);
-  pthread_mutex_lock(&(myAllocators.slabLock));
-  struct freeSlabNode * topOfStack = myAllocators.topOfSlabStack;
-  (*nodeToAdd)->next = topOfStack;
-  topOfStack = nodeToAdd;
-  pthread_mutex_unlock(&(myAllocators.slabLock));
+  assert(nodeToAdd != NULL);
+  pthread_mutex_lock(&(myAllocators.slabAllocator.slabLock));
+  /*
+  if (myAllocators.topOfSlabStack <= myAllocators.regionStartPtr) //stack overflow
+  {
+    return NULL; //we can't push anything more!
+  }
+  */
+
+  if (myAllocators.topOfSlabStack == nodeToAdd)
+  {
+    nodeToAdd->next = NULL;
+  }
+  else
+  {
+    nodeToAdd->next = myAllocators.topOfSlabStack;
+  }
+
+  myAllocators.topOfSlabStack = nodeToAdd;
+  pthread_mutex_unlock(&(myAllocators.slabAllocator.slabLock));
+  return myAllocators.topOfSlabStack;
 }
 
 void * slabPop ()
 {
-  pthread_mutex_lock(&(myAllocators.slabLock));
+  pthread_mutex_lock(&(myAllocators.slabAllocator.slabLock));
   struct freeSlabNode * topOfStack = myAllocators.topOfSlabStack;
   if (topOfStack == NULL)
   {
@@ -196,6 +227,6 @@ void * slabPop ()
   }
   struct freeSlabNode * temp = topOfStack;
   topOfStack = topOfStack->next;
-  pthread_mutex_unlock(&(myAllocators.slabLock));
+  pthread_mutex_unlock(&(myAllocators.slabAllocator.slabLock));
   return temp;
 }
