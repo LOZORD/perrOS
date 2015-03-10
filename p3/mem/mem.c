@@ -111,6 +111,20 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
 
 void * Mem_Alloc (int size)
 {
+  void * ret = NULL;
+  //attempt to slab allocate
+  if (size == myAllocators.slabUnitSize)
+  {
+    ret = slabPop();
+    if (ret != NULL)
+    {
+      return ret;
+    }
+  }
+
+  //we do a next fit allocation
+  //TODO
+
   return NULL;
 }
 
@@ -129,18 +143,21 @@ int Mem_Free (void * ptr)
     return -1;
   }
 
-  void * headerPtr = ptr - sizeof(struct AllocatedHeader);
+  int isSlabAllocated = ptr < myAllocators.nextFitRegionStartPtr ? 1 : 0;
 
+  //void * headerPtr = ptr - sizeof(struct AllocatedHeader);
+
+  /*
   if (((struct AllocatedHeader *)(headerPtr))->magic != (void *)MAGIC)
   {
     return -1;
   }
-
-  int isSlabAllocated = headerPtr < myAllocators.nextFitRegionStartPtr ? 1 : 0;
+  */
 
   if (isSlabAllocated)
   {
-    //TODO: slab free
+    assert((int)(myAllocators.nextFitRegionStartPtr - ptr) % myAllocators.slabUnitSize == 0);
+    slabPush(ptr);
   }
   else
   {
@@ -185,6 +202,7 @@ void Mem_Dump()
 
 void * slabPush (struct freeSlabNode * nodeToAdd)
 {
+  //TODO check that not out of bounds
   assert(nodeToAdd != NULL);
   pthread_mutex_lock(&(myAllocators.slabAllocator.slabLock));
   nodeToAdd->next = myAllocators.topOfSlabStack;
@@ -196,13 +214,12 @@ void * slabPush (struct freeSlabNode * nodeToAdd)
 void * slabPop ()
 {
   pthread_mutex_lock(&(myAllocators.slabAllocator.slabLock));
-  struct freeSlabNode * topOfStack = myAllocators.topOfSlabStack;
-  if (topOfStack == NULL)
+  if (myAllocators.topOfSlabStack == NULL)
   {
-    return NULL;
+    return NULL; //empty stack
   }
-  struct freeSlabNode * temp = topOfStack;
-  topOfStack = topOfStack->next;
+  void * temp = myAllocators.topOfSlabStack;
+  myAllocators.topOfSlabStack = myAllocators.topOfSlabStack->next;
   pthread_mutex_unlock(&(myAllocators.slabAllocator.slabLock));
   return temp;
 }

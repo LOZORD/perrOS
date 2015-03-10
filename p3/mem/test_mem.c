@@ -33,6 +33,33 @@ int main (int argc, char ** argv)
   Mem_Dump();
 
   //TODO: use threading to test mutex
+  //
+  //
+
+
+
+  void * pArr [128];
+
+  pArr[0] = Mem_Alloc(16);
+  fprintf(stderr, "\tALLOC'D SLAB: %p\n", pArr[0]);
+  pArr[1] = Mem_Alloc(16);
+  fprintf(stderr, "\tALLOC'D SLAB: %p\n", pArr[1]);
+  pArr[2] = Mem_Alloc(16);
+  fprintf(stderr, "\tALLOC'D SLAB: %p\n", pArr[2]);
+  pArr[3] = Mem_Alloc(15); //this should be a next fit alloc, ie unimplemented
+
+  assert(pArr[0] && pArr[1] && pArr[2]);
+  assert(pArr[3] == NULL);
+
+  Mem_Dump();
+
+  fprintf(stderr, "FREEING SLABS OUT OF ORDER\n");
+
+  Mem_Free(pArr[1]);
+  Mem_Free(pArr[0]);
+  Mem_Free(pArr[2]);
+
+  Mem_Dump();
 
   printf("TESTS PASS!\n");
   exit(EXIT_SUCCESS);
