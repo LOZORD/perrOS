@@ -111,6 +111,8 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
 
 void * Mem_Alloc (int size)
 {
+  //TODO return null if not initializedOnce
+  //TODO locking
   void * ret = NULL;
   //attempt to slab allocate
   if (size == myAllocators.slabUnitSize)
@@ -130,6 +132,8 @@ void * Mem_Alloc (int size)
 
 int Mem_Free (void * ptr)
 {
+  //TODO return null if not initializedOnce
+  //TODO locking
   if (ptr == NULL)
   {
     fprintf(stderr, "SEGFAULT\n");
