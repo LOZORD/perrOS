@@ -31,6 +31,7 @@ struct slabAllocator
 struct nextFitAllocator
 {
   struct FreeHeader * freeHead;
+  struct FreeHeader * nextPtr;
   pthread_mutex_t nextFitLock;
 };
 
@@ -305,7 +306,8 @@ int nextFitFree (void * ptr)
   //ptr is guaranteed within the bounds of the nextFit region
   pthread_mutex_lock(&myAllocators.nextFitAllocator.nextFitLock);
 
-  struct AllocatedHeader * allocatedPtr = (struct AllocatedHeader *)(ptr - sizeof(struct AllocatedHeader));
+  struct AllocatedHeader * allocatedPtr
+    = (struct AllocatedHeader *)(ptr - sizeof(struct AllocatedHeader));
 
   if (allocatedPtr->magic != (void *)MAGIC)
   {
@@ -323,9 +325,13 @@ int nextFitFree (void * ptr)
 
   freePtr->length = length;
 
+  /*
   freePtr->next = myAllocators.nextFitAllocator.freeHead;
 
   myAllocators.nextFitAllocator.freeHead = freePtr;
+  */
+
+  addFreeNode(freePtr);
 
   //now, we attempt to coalesce
   nextFitCoalesce(myAllocators.nextFitAllocator.freeHead);
@@ -419,6 +425,45 @@ void removeFreeNode (struct FreeHeader * freePtr)
 
 void addFreeNode (struct FreeHeader * freePtr)
 {
-  freePtr->next = myAllocators.nextFitAllocator.freeHead;
-  myAllocators.nextFitAllocator.freeHead = freePtr;
+  //freePtr->next = myAllocators.nextFitAllocator.freeHead;
+  //myAllocators.nextFitAllocator.freeHead = freePtr;
+  assert(freePtr != NULL);
+
+  struct FreeHeader * itr = myAllocators.nextFitAllocator.freeHead;
+  if (itr == NULL)
+  {
+    freePtr->next = NULL;
+    myAllocators.nextFitAllocator.freeHead = freePtr;
+    return;
+  }
+  else if (itr > freePtr)
+  {
+    freePtr->next = myAllocators.nextFitAllocator.freeHead;
+    myAllocators.nextFitAllocator.freeHead = freePtr;
+    return;
+  }
+
+  while (itr != NULL)
+  {
+    if (itr->next == NULL)
+    {
+      itr->next = freePtr;
+      freePtr->next = NULL;
+      return;
+    }
+    else if (itr->next > freePtr)
+    {
+      freePtr->next = itr->next;
+      itr->next = freePtr;
+      return;
+    }
+    else
+    {
+      itr = itr->next;
+    }
+  }
+}
+
+void sortList (struct FreeHeader * freePtr)
+{
 }
