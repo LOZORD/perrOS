@@ -46,10 +46,8 @@ int main (int argc, char ** argv)
   fprintf(stderr, "\tALLOC'D SLAB: %p\n", pArr[1]);
   pArr[2] = Mem_Alloc(16);
   fprintf(stderr, "\tALLOC'D SLAB: %p\n", pArr[2]);
-  pArr[3] = Mem_Alloc(15); //this should be a next fit alloc, ie unimplemented
 
   assert(pArr[0] && pArr[1] && pArr[2]);
-  assert(pArr[3] == NULL);
 
   Mem_Dump();
 
@@ -71,10 +69,38 @@ int main (int argc, char ** argv)
     assert(pArr[i] != NULL);
   }
 
-  //we don't have nextFitSetUp, so this should be NULL
-  assert(Mem_Alloc(16) == NULL);
-
   Mem_Dump();
+
+  //test next fit
+
+  fprintf(stderr, "*** NOW TESTING NEXT FIT ***\n\n");
+
+  fprintf(stderr, "\ttesting alloc of 14 bytes\n");
+  pArr[16] = Mem_Alloc(14);
+  assert(pArr[16] != NULL);
+
+  fprintf(stderr, "\ttesting alloc of 17 bytes\n");
+  pArr[17] = Mem_Alloc(17);
+  assert(pArr[17] != NULL);
+
+  fprintf(stderr, "\ttesting alloc of 512 bytes\n");
+  pArr[18] = Mem_Alloc(512);
+  assert(pArr[18] != NULL);
+
+  fprintf(stderr, "\ttesting alloc 16 bytes\n");
+  pArr[19] = Mem_Alloc(16); //attempts to be a slab, but is put in nextFit
+  assert(pArr[19] != NULL);
+
+  fprintf(stderr, "\ttesting alloc 404 bytes\n");
+  pArr[20] = Mem_Alloc(404);
+  assert(pArr[20] == NULL);
+
+  /*
+  for(; i < 32; i++)
+  {
+    pArr[i] = Mem_Alloc(
+  }
+  */
 
   printf("TESTS PASS!\n");
   exit(EXIT_SUCCESS);
