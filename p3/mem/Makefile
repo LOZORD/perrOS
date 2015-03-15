@@ -4,7 +4,7 @@ all: mem.c test_mem.c lmem
 	gcc -lmem -L. -pthread -o threaded threaded.c -Wall -Werror
 
 lmem:
-	gcc -c -fpic mem.c -Wall -Werror
+	gcc -c -fpic mem.c -Wall -Werror -pthread
 	gcc -shared -o libmem.so mem.o
 
 clean:

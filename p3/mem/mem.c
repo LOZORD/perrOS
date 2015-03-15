@@ -65,6 +65,7 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
   pthread_mutex_lock(&mainAllocatorLock);
   if (initializedOnce)
   {
+    pthread_mutex_unlock(&mainAllocatorLock);
     return NULL;
   }
   else
@@ -122,9 +123,10 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
 //TODO: init memory to zero
 void * Mem_Alloc (int size)
 {
-  //pthread_mutex_lock();
+  //pthread_mutex_lock(&mainAllocatorLock);
   if (!initializedOnce)
   {
+    //pthread_mutex_unlock(&mainAllocatorLock);
     return NULL;
   }
 
@@ -135,6 +137,7 @@ void * Mem_Alloc (int size)
     ret = slabPop();
     if (ret != NULL)
     {
+      //pthread_mutex_unlock(&mainAllocatorLock);
       return ret;
     }
   }
@@ -142,15 +145,16 @@ void * Mem_Alloc (int size)
   //we do a next fit allocation, or slab couldn't allocate
   ret = nextFitAlloc(size);
 
+  //pthread_mutex_unlock(&mainAllocatorLock);
   return ret;
 }
 
 int Mem_Free (void * ptr)
 {
-  //TODO return null if not initializedOnce
-  pthread_mutex_lock(&mainAllocatorLock);
+  //pthread_mutex_lock(&mainAllocatorLock);
   if (!initializedOnce)
   {
+    //pthread_mutex_unlock(&mainAllocatorLock);
     return -1;
   }
 
@@ -161,6 +165,7 @@ int Mem_Free (void * ptr)
     #if DEBUG
     fprintf(stderr, "null pointer or improperly aligned pointer\n");
     #endif
+    //pthread_mutex_unlock(&mainAllocatorLock);
     return (-1);
   }
 
@@ -171,9 +176,9 @@ int Mem_Free (void * ptr)
     #if DEBUG
     fprintf(stderr, "pointer is out of bounds\n");
     #endif
+    //pthread_mutex_unlock(&mainAllocatorLock);
     return (-1);
   }
-  pthread_mutex_unlock(&mainAllocatorLock);
 
   int isSlabAllocated = ptr < myAllocators.nextFitRegionStartPtr ? 1 : 0;
   int retVal = 0;
@@ -184,6 +189,7 @@ int Mem_Free (void * ptr)
     if((int)(myAllocators.nextFitRegionStartPtr - ptr) % myAllocators.slabUnitSize != 0)
     {
       fprintf(stderr, "SEGFAULT\n");
+      //pthread_mutex_unlock(&mainAllocatorLock);
       return -1;
     }
 
@@ -194,6 +200,7 @@ int Mem_Free (void * ptr)
     //TODO: next fit free
     retVal = nextFitFree(ptr);
   }
+  //pthread_mutex_unlock(&mainAllocatorLock);
   return retVal;
 }
 
@@ -246,6 +253,7 @@ void * slabPop ()
   pthread_mutex_lock(&(myAllocators.slabAllocator.slabLock));
   if (myAllocators.topOfSlabStack == NULL)
   {
+    pthread_mutex_unlock(&myAllocators.slabAllocator.slabLock);
     return NULL; //empty stack
   }
   void * temp = myAllocators.topOfSlabStack;
@@ -271,9 +279,6 @@ void * nextFitAlloc (int size)
 
   pthread_mutex_lock(&myAllocators.nextFitAllocator.nextFitLock);
   //now we attempt to allocated alignedSize bytes
-  //
-  //
-  //
 
   if (myAllocators.nextFitAllocator.freeHead == NULL)
   {
@@ -328,6 +333,9 @@ void * nextFitAlloc (int size)
         itr = itr->next;
       }
     }
+    #if DEBUG
+    fprintf(stderr, "here 336\n"); //XXX
+    #endif
   } while (itr != myAllocators.nextFitAllocator.nextPtr);
 
   pthread_mutex_unlock(&myAllocators.nextFitAllocator.nextFitLock);
@@ -413,6 +421,9 @@ void nextFitCoalesce (struct FreeHeader * freeHeadPtr)
     }
 
     itr = itr->next;
+    #if DEBUG
+    fprintf(stderr, "here 422\n");//XXX
+    #endif
   }
 
 
@@ -454,6 +465,9 @@ void removeFreeNode (struct FreeHeader * freePtr)
     }
 
     itr = itr->next;
+    #if DEBUG
+    fprintf(stderr, "here 464\n"); //XXX
+    #endif
   }
 }
 
@@ -495,5 +509,8 @@ void addFreeNode (struct FreeHeader * freePtr)
     {
       itr = itr->next;
     }
+    #if DEBUG
+    fprintf(stderr, "here 506\n"); //XXX
+    #endif
   }
 }
