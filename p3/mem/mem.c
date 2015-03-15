@@ -116,8 +116,10 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
   return myAllocators.regionStartPtr;
 }
 
+//TODO: init memory to zero
 void * Mem_Alloc (int size)
 {
+  //pthread_mutex_lock();
   if (!initializedOnce)
   {
     return NULL;
@@ -160,15 +162,6 @@ int Mem_Free (void * ptr)
 
   int isSlabAllocated = ptr < myAllocators.nextFitRegionStartPtr ? 1 : 0;
   int retVal = 0;
-
-  //void * headerPtr = ptr - sizeof(struct AllocatedHeader);
-
-  /*
-  if (((struct AllocatedHeader *)(headerPtr))->magic != (void *)MAGIC)
-  {
-    return -1;
-  }
-  */
 
   if (isSlabAllocated)
   {
@@ -257,6 +250,8 @@ void * nextFitAlloc (int size)
     alignedSize = size;
   }
 
+  fprintf(stderr, "\t\t\tUsing aligned size of %d\n", alignedSize);
+
   pthread_mutex_lock(&myAllocators.nextFitAllocator.nextFitLock);
   //now we attempt to allocated alignedSize bytes
   //
@@ -264,29 +259,42 @@ void * nextFitAlloc (int size)
   struct FreeHeader * itr = myAllocators.nextFitAllocator.freeHead;
   struct AllocatedHeader * ret = NULL;
 
+  fprintf(stderr, "\t\t\tVALUE OF FREE HEAD:\t%p\n", itr);
   while (itr != NULL)
   {
+    fprintf(stderr, "here\n");
     //we can use this chunk
     if (itr->length + sizeof(struct FreeHeader) >= alignedSize + sizeof(struct AllocatedHeader))
     {
+      int currLen = itr->length;
+      removeFreeNode(itr);
       ret = (struct AllocatedHeader *) itr;
       ret->magic = (void *)MAGIC;
-      ret->length = itr->length;
+      ret->length = alignedSize;
       //TODO: remove itr from the free list
-      removeFreeNode(itr);
-      if (itr->length + sizeof(struct FreeHeader) > alignedSize + sizeof(struct AllocatedHeader))
+      fprintf(stderr, "\t\tFREE HEAD: %p\n", myAllocators.nextFitAllocator.freeHead);
+      if (currLen + sizeof(struct FreeHeader) > alignedSize + sizeof(struct AllocatedHeader))
       {
         //make new free node
-        struct  FreeHeader * leftOver = itr + alignedSize + sizeof(struct AllocatedHeader);
-        leftOver->length = itr->length - alignedSize - sizeof(struct FreeHeader);
+        struct  FreeHeader * leftOver = (void *)(itr) + alignedSize + sizeof(struct AllocatedHeader);
+        fprintf(stderr, "\t\t\t\tADDED VALUES: %p\t%d\t%lu\n", itr, alignedSize, sizeof(struct AllocatedHeader));
+        leftOver->length = currLen - alignedSize - sizeof(struct FreeHeader);
+        fprintf(stderr, "\t\t\t\tLEFT OVER PTR:\t%p WITH LENGTH: %d\n", leftOver, leftOver->length);
         addFreeNode(leftOver);
       }
+      fprintf(stderr, "\t\t\tNEW VALUE OF FREE HEAD:\t%p\n", myAllocators.nextFitAllocator.freeHead);
       break;
     }
-    itr = itr->next;
+    else
+    {
+      itr = itr->next;
+    }
   }
 
   pthread_mutex_unlock(&myAllocators.nextFitAllocator.nextFitLock);
+
+  fprintf(stderr, "\t\tNEXT FIT RETURNS: %p\n", ret);
+
   return (void *)ret;
 }
 
