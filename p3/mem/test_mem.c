@@ -95,6 +95,21 @@ int main (int argc, char ** argv)
   pArr[20] = Mem_Alloc(404);
   assert(pArr[20] == NULL);
 
+  pArr[20] = Mem_Alloc(113);
+  assert(pArr[20] == NULL);
+
+  assert(Mem_Free(pArr[19]) == 0);
+
+  Mem_Dump();
+
+  pArr[20] = Mem_Alloc(113);
+  assert(pArr[20] != NULL);
+
+  Mem_Dump();
+
+  assert(Mem_Free(pArr[0]) == 0);
+  assert(Mem_Alloc(16) != NULL);
+
   /*
   for(; i < 32; i++)
   {

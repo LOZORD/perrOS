@@ -7,6 +7,7 @@
 #include "mymem.h"
 
 #define ALIGN_SIZE 16
+#define DEBUG 0
 
 //declarations
 struct freeSlabNode
@@ -150,6 +151,9 @@ int Mem_Free (void * ptr)
   if (ptr == NULL || ptrVal % ALIGN_SIZE != 0)
   {
     fprintf(stderr, "SEGFAULT\n");
+    #if DEBUG
+    fprintf(stderr, "null pointer or improperly aligned pointer\n");
+    #endif
     return (-1);
   }
 
@@ -157,6 +161,9 @@ int Mem_Free (void * ptr)
     ptr > (myAllocators.regionStartPtr + myAllocators.sizeOfRegion))
   {
     fprintf(stderr, "SEGFAULT\n");
+    #if DEBUG
+    fprintf(stderr, "pointer is out of bounds\n");
+    #endif
     return (-1);
   }
 
@@ -165,8 +172,13 @@ int Mem_Free (void * ptr)
 
   if (isSlabAllocated)
   {
-    //TODO refactor
-    assert((int)(myAllocators.nextFitRegionStartPtr - ptr) % myAllocators.slabUnitSize == 0);
+    //if the pointer does not correspond to a slab of slabUnitSize
+    if((int)(myAllocators.nextFitRegionStartPtr - ptr) % myAllocators.slabUnitSize != 0)
+    {
+      fprintf(stderr, "SEGFAULT\n");
+      return -1;
+    }
+
     slabPush(ptr); //ignore return val???
   }
   else
@@ -197,7 +209,7 @@ void Mem_Dump()
 
   fprintf(stderr, "\n\nFOUND %d FREE SLABS\nENTERING NEXT FIT REGION\n", slabCount);
 
-  struct FreeHeader * nextFitItr = myAllocators.nextFitRegionStartPtr;
+  struct FreeHeader * nextFitItr = myAllocators.nextFitAllocator.freeHead;
   int nFCount = 0;
 
   while (nextFitItr != NULL)
@@ -250,8 +262,6 @@ void * nextFitAlloc (int size)
     alignedSize = size;
   }
 
-  fprintf(stderr, "\t\t\tUsing aligned size of %d\n", alignedSize);
-
   pthread_mutex_lock(&myAllocators.nextFitAllocator.nextFitLock);
   //now we attempt to allocated alignedSize bytes
   //
@@ -259,10 +269,8 @@ void * nextFitAlloc (int size)
   struct FreeHeader * itr = myAllocators.nextFitAllocator.freeHead;
   struct AllocatedHeader * ret = NULL;
 
-  fprintf(stderr, "\t\t\tVALUE OF FREE HEAD:\t%p\n", itr);
   while (itr != NULL)
   {
-    fprintf(stderr, "here\n");
     //we can use this chunk
     if (itr->length + sizeof(struct FreeHeader) >= alignedSize + sizeof(struct AllocatedHeader))
     {
@@ -272,17 +280,13 @@ void * nextFitAlloc (int size)
       ret->magic = (void *)MAGIC;
       ret->length = alignedSize;
       //TODO: remove itr from the free list
-      fprintf(stderr, "\t\tFREE HEAD: %p\n", myAllocators.nextFitAllocator.freeHead);
       if (currLen + sizeof(struct FreeHeader) > alignedSize + sizeof(struct AllocatedHeader))
       {
         //make new free node
         struct  FreeHeader * leftOver = (void *)(itr) + alignedSize + sizeof(struct AllocatedHeader);
-        fprintf(stderr, "\t\t\t\tADDED VALUES: %p\t%d\t%lu\n", itr, alignedSize, sizeof(struct AllocatedHeader));
         leftOver->length = currLen - alignedSize - sizeof(struct FreeHeader);
-        fprintf(stderr, "\t\t\t\tLEFT OVER PTR:\t%p WITH LENGTH: %d\n", leftOver, leftOver->length);
         addFreeNode(leftOver);
       }
-      fprintf(stderr, "\t\t\tNEW VALUE OF FREE HEAD:\t%p\n", myAllocators.nextFitAllocator.freeHead);
       break;
     }
     else
@@ -293,9 +297,7 @@ void * nextFitAlloc (int size)
 
   pthread_mutex_unlock(&myAllocators.nextFitAllocator.nextFitLock);
 
-  fprintf(stderr, "\t\tNEXT FIT RETURNS: %p\n", ret);
-
-  return (void *)ret;
+  return !ret ? NULL : ((void *)(ret) + sizeof(struct AllocatedHeader));
 }
 
 int nextFitFree (void * ptr)
@@ -307,7 +309,10 @@ int nextFitFree (void * ptr)
 
   if (allocatedPtr->magic != (void *)MAGIC)
   {
+    #if DEBUG
     fprintf(stderr, "SEGFAULT\n");
+    fprintf(stderr, "(bad magic number)\n");
+    #endif
     pthread_mutex_unlock(&myAllocators.nextFitAllocator.nextFitLock);
     return (-1);
   }
@@ -331,19 +336,26 @@ int nextFitFree (void * ptr)
 
 void nextFitCoalesce (struct FreeHeader * freeHeadPtr)
 {
+  #if DEBUG
+  fprintf(stderr, "\t\t\tCOALESCING WITH FREE HEAD PTR: %p\n", freeHeadPtr);
+  #endif
   struct FreeHeader * nextNeighbor = NULL;
   struct FreeHeader * prevNeighbor = NULL;
   struct FreeHeader * itr = myAllocators.nextFitAllocator.freeHead;
   int nextNeighborIsFree = 0;
 
-  nextNeighbor = freeHeadPtr + freeHeadPtr->length + sizeof(struct FreeHeader);
+  nextNeighbor = (void *)(freeHeadPtr) + freeHeadPtr->length + sizeof(struct FreeHeader);
+
+  #if DEBUG
+  fprintf(stderr, "\t\t\tNEXT NEIGHBOR: %p\n", nextNeighbor);
+  #endif
 
   struct FreeHeader * nextNode;
 
 
   while (itr != NULL)
   {
-    nextNode = itr + itr->length + sizeof(struct FreeHeader);
+    nextNode = (void *)(itr) + itr->length + sizeof(struct FreeHeader);
 
     //coalesce with prevNeighbor
     if (nextNode == freeHeadPtr)
