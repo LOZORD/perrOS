@@ -61,6 +61,21 @@ int main (int argc, char ** argv)
 
   Mem_Dump();
 
+  fprintf(stderr, "ALLOCATING ALL SLABS\n");
+
+  int i;
+
+  for (i = 0; i < 16; i++)
+  {
+    pArr[i] = Mem_Alloc(16);
+    assert(pArr[i] != NULL);
+  }
+
+  //we don't have nextFitSetUp, so this should be NULL
+  assert(Mem_Alloc(16) == NULL);
+
+  Mem_Dump();
+
   printf("TESTS PASS!\n");
   exit(EXIT_SUCCESS);
 }

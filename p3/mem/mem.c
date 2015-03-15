@@ -6,6 +6,8 @@
 #include <pthread.h>
 #include "mymem.h"
 
+#define ALIGN_SIZE 16
+
 //declarations
 struct freeSlabNode
 {
@@ -14,6 +16,7 @@ struct freeSlabNode
 
 void * slabPush (struct freeSlabNode * nodeToAdd);
 void * slabPop ();
+void * nextFitAlloc(int size);
 
 struct slabAllocator
 {
@@ -24,7 +27,8 @@ struct nextFitAllocator
 {
   struct FreeHeader * freeHead;
   struct AllocatedHeader * allocatedHead;
-  struct AllocatedHeader * nextPtr;
+  //struct AllocatedHeader * nextPtr;
+  struct FreeHeader * nextPtr;
   pthread_mutex_t nextFitLock;
 };
 
@@ -64,7 +68,6 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
   {
     initializedOnce = 1;
   }
-  pthread_mutex_unlock(&mainAllocatorLock);
 
   assert(sizeOfRegion % 4 == 0);
 
@@ -72,6 +75,8 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
   myAllocators.sizeOfRegion = sizeOfRegion;
 
   int slabRegionSize = sizeOfRegion / 4;
+
+  int nextFitRegionSize = sizeOfRegion - slabRegionSize;
 
   //TODO: check that we use all of slab region (ie no remainder?)
 
@@ -101,18 +106,24 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
 
   //init the nextFitAllocator
   myAllocators.nextFitAllocator.nextFitLock = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
-  myAllocators.nextFitAllocator.freeHead = (struct FreeHeader *) (myAllocators.nextFitRegionStartPtr);
-  myAllocators.nextFitAllocator.allocatedHead = (struct AllocatedHeader *) (myAllocators.nextFitRegionStartPtr);
-  myAllocators.nextFitAllocator.nextPtr = (struct AllocatedHeader *) (myAllocators.nextFitRegionStartPtr); //XXX correct type?
+  myAllocators.nextFitAllocator.freeHead  = (struct FreeHeader *) (myAllocators.nextFitRegionStartPtr);
+  myAllocators.nextFitAllocator.nextPtr   = (struct FreeHeader *) (myAllocators.nextFitRegionStartPtr);
+  myAllocators.nextFitAllocator.freeHead->length  = nextFitRegionSize - (sizeof(struct FreeHeader));
+  myAllocators.nextFitAllocator.freeHead->next    = NULL;
+  myAllocators.nextFitAllocator.allocatedHead     = NULL;
 
+  pthread_mutex_unlock(&mainAllocatorLock);
 
   return myAllocators.regionStartPtr;
 }
 
 void * Mem_Alloc (int size)
 {
-  //TODO return null if not initializedOnce
-  //TODO locking
+  if (!initializedOnce)
+  {
+    return NULL;
+  }
+
   void * ret = NULL;
   //attempt to slab allocate
   if (size == myAllocators.slabUnitSize)
@@ -124,10 +135,10 @@ void * Mem_Alloc (int size)
     }
   }
 
-  //we do a next fit allocation
-  //TODO
+  //we do a next fit allocation, or slab couldn't allocate
+  ret = nextFitAlloc(size);
 
-  return NULL;
+  return ret;
 }
 
 int Mem_Free (void * ptr)
@@ -226,4 +237,30 @@ void * slabPop ()
   myAllocators.topOfSlabStack = myAllocators.topOfSlabStack->next;
   pthread_mutex_unlock(&(myAllocators.slabAllocator.slabLock));
   return temp;
+}
+
+void * nextFitAlloc (int size)
+{
+  //first make allocation 16 btye-aligned
+
+  int alignedSize = 0;
+
+  if (size % ALIGN_SIZE != 0)
+  {
+    alignedSize = size + (ALIGN_SIZE -(size % ALIGN_SIZE));
+  }
+  else
+  {
+    alignedSize = size;
+  }
+
+  pthread_mutex_lock(&myAllocators.nextFitAllocator.nextFitLock);
+  //now we attempt to allocated alignedSize bytes
+  //
+
+  struct * FreeHeader itr = myAllocators.nextFitAllocator.nextPtr;
+  struct * FreeHeader beforeItr = itr - 1;
+
+  pthread_mutex_unlock(&myAllocators.nextFitAllocator.nextFitLock);
+  return NULL;
 }
