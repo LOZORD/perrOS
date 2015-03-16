@@ -23,21 +23,14 @@ void    nextFitCoalesce (struct FreeHeader * freeHeadPtr);
 void    addFreeNode (struct FreeHeader * freePtr);
 void    removeFreeNode (struct FreeHeader * freePtr);
 
-struct slabAllocator
-{
-  //pthread_mutex_t slabLock;
-};
-
 struct nextFitAllocator
 {
   struct FreeHeader * freeHead;
   struct FreeHeader * nextPtr;
-  //pthread_mutex_t nextFitLock;
 };
 
 struct memAllocators
 {
-  struct slabAllocator slabAllocator;
   struct nextFitAllocator nextFitAllocator;
   void * regionStartPtr;
   struct freeSlabNode * topOfSlabStack;
@@ -47,7 +40,7 @@ struct memAllocators
 };
 
 struct memAllocators myAllocators;
-//pthread_mutex_t mainAllocatorLock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mainLock = PTHREAD_MUTEX_INITIALIZER;
 
 static volatile int initializedOnce = 0;
 
@@ -55,17 +48,18 @@ int fdin;
 
 void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
 {
+  pthread_mutex_lock(&mainLock);
   //sanity check
   if (sizeOfRegion < 4 || slabSize < 1 || sizeOfRegion < slabSize || (sizeOfRegion / 4) < slabSize)
   {
+    pthread_mutex_unlock(&mainLock);
     return NULL;
   }
 
   //first check if we have allocated yet
-  //pthread_mutex_lock(&mainAllocatorLock);
   if (initializedOnce)
   {
-    //pthread_mutex_unlock(&mainAllocatorLock);
+    pthread_mutex_unlock(&mainLock);
     return NULL;
   }
   else
@@ -91,11 +85,10 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
   if (myAllocators.regionStartPtr == MAP_FAILED)
   {
     //fprintf(stderr, "Couldn't get memory!\n");
+    pthread_mutex_unlock(&mainLock);
     exit(-1);
   }
 
-  //init the slabAllocator
-  //myAllocators.slabAllocator.slabLock = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
   myAllocators.topOfSlabStack = NULL;
 
   myAllocators.nextFitRegionStartPtr = myAllocators.regionStartPtr + slabRegionSize;
@@ -109,24 +102,23 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
   }
 
   //init the nextFitAllocator
-  //myAllocators.nextFitAllocator.nextFitLock = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
   myAllocators.nextFitAllocator.freeHead  = (struct FreeHeader *) (myAllocators.nextFitRegionStartPtr);
   myAllocators.nextFitAllocator.freeHead->length  = nextFitRegionSize - (sizeof(struct FreeHeader));
   myAllocators.nextFitAllocator.freeHead->next    = NULL;
   myAllocators.nextFitAllocator.nextPtr = myAllocators.nextFitAllocator.freeHead;
 
-  //pthread_mutex_unlock(&mainAllocatorLock);
 
+  pthread_mutex_unlock(&mainLock);
   return myAllocators.regionStartPtr;
 }
 
 //TODO: init memory to zero
 void * Mem_Alloc (int size)
 {
-  //pthread_mutex_lock(&mainAllocatorLock);
+  pthread_mutex_lock(&mainLock);
   if (!initializedOnce)
   {
-    //pthread_mutex_unlock(&mainAllocatorLock);
+    pthread_mutex_unlock(&mainLock);
     return NULL;
   }
 
@@ -137,7 +129,7 @@ void * Mem_Alloc (int size)
     ret = slabPop();
     if (ret != NULL)
     {
-      //pthread_mutex_unlock(&mainAllocatorLock);
+      pthread_mutex_unlock(&mainLock);
       return ret;
     }
   }
@@ -145,16 +137,16 @@ void * Mem_Alloc (int size)
   //we do a next fit allocation, or slab couldn't allocate
   ret = nextFitAlloc(size);
 
-  //pthread_mutex_unlock(&mainAllocatorLock);
+  pthread_mutex_unlock(&mainLock);
   return ret;
 }
 
 int Mem_Free (void * ptr)
 {
-  //pthread_mutex_lock(&mainAllocatorLock);
+  pthread_mutex_lock(&mainLock);
   if (!initializedOnce)
   {
-    //pthread_mutex_unlock(&mainAllocatorLock);
+    pthread_mutex_unlock(&mainLock);
     return -1;
   }
 
@@ -165,7 +157,7 @@ int Mem_Free (void * ptr)
     #if DEBUG
     fprintf(stderr, "null pointer or improperly aligned pointer\n");
     #endif
-    //pthread_mutex_unlock(&mainAllocatorLock);
+    pthread_mutex_unlock(&mainLock);
     return (-1);
   }
 
@@ -176,7 +168,7 @@ int Mem_Free (void * ptr)
     #if DEBUG
     fprintf(stderr, "pointer is out of bounds\n");
     #endif
-    //pthread_mutex_unlock(&mainAllocatorLock);
+    pthread_mutex_unlock(&mainLock);
     return (-1);
   }
 
@@ -189,7 +181,7 @@ int Mem_Free (void * ptr)
     if((int)(myAllocators.nextFitRegionStartPtr - ptr) % myAllocators.slabUnitSize != 0)
     {
       fprintf(stderr, "SEGFAULT\n");
-      //pthread_mutex_unlock(&mainAllocatorLock);
+      pthread_mutex_unlock(&mainLock);
       return -1;
     }
 
@@ -200,14 +192,14 @@ int Mem_Free (void * ptr)
     //TODO: next fit free
     retVal = nextFitFree(ptr);
   }
-  //pthread_mutex_unlock(&mainAllocatorLock);
+  pthread_mutex_unlock(&mainLock);
   return retVal;
 }
 
 void Mem_Dump()
 {
   //lock the entire segment
-  //pthread_mutex_lock(&mainAllocatorLock);
+  pthread_mutex_lock(&mainLock);
 
   struct freeSlabNode * slabItr = myAllocators.topOfSlabStack;
   int slabCount = 0;
@@ -233,32 +225,26 @@ void Mem_Dump()
     nFCount++;
   }
   fprintf(stderr, "\n\nFOUND %d NEXT FIT BLOCKS\n--DONE--\n", nFCount);
-  //pthread_mutex_unlock(&mainAllocatorLock);
+  pthread_mutex_unlock(&mainLock);
 }
 
 
 void * slabPush (struct freeSlabNode * nodeToAdd)
 {
-  //TODO check that not out of bounds
   assert(nodeToAdd != NULL);
-  //pthread_mutex_lock(&(myAllocators.slabAllocator.slabLock));
   nodeToAdd->next = myAllocators.topOfSlabStack;
   myAllocators.topOfSlabStack = nodeToAdd;
-  //pthread_mutex_unlock(&(myAllocators.slabAllocator.slabLock));
   return myAllocators.topOfSlabStack;
 }
 
 void * slabPop ()
 {
-  //pthread_mutex_lock(&(myAllocators.slabAllocator.slabLock));
   if (myAllocators.topOfSlabStack == NULL)
   {
-    //pthread_mutex_unlock(&myAllocators.slabAllocator.slabLock);
     return NULL; //empty stack
   }
   void * temp = myAllocators.topOfSlabStack;
   myAllocators.topOfSlabStack = myAllocators.topOfSlabStack->next;
-  //pthread_mutex_unlock(&(myAllocators.slabAllocator.slabLock));
   return temp;
 }
 
@@ -277,12 +263,10 @@ void * nextFitAlloc (int size)
     alignedSize = size;
   }
 
-  //pthread_mutex_lock(&myAllocators.nextFitAllocator.nextFitLock);
   //now we attempt to allocated alignedSize bytes
 
   if (myAllocators.nextFitAllocator.freeHead == NULL)
   {
-    //pthread_mutex_unlock(&myAllocators.nextFitAllocator.nextFitLock);
     return NULL;
   }
 
@@ -319,7 +303,6 @@ void * nextFitAlloc (int size)
         addFreeNode(leftOver);
         myAllocators.nextFitAllocator.nextPtr = leftOver;
       }
-      //myAllocators.nextFitAllocator.nextFit = itr->next;
       break;
     }
     else
@@ -338,7 +321,6 @@ void * nextFitAlloc (int size)
     #endif
   } while (itr != myAllocators.nextFitAllocator.nextPtr);
 
-  //pthread_mutex_unlock(&myAllocators.nextFitAllocator.nextFitLock);
 
   return !ret ? NULL : ((void *)(ret) + sizeof(struct AllocatedHeader));
 }
@@ -346,7 +328,6 @@ void * nextFitAlloc (int size)
 int nextFitFree (void * ptr)
 {
   //ptr is guaranteed within the bounds of the nextFit region
-  //pthread_mutex_lock(&myAllocators.nextFitAllocator.nextFitLock);
 
   struct AllocatedHeader * allocatedPtr
     = (struct AllocatedHeader *)(ptr - sizeof(struct AllocatedHeader));
@@ -357,7 +338,6 @@ int nextFitFree (void * ptr)
     fprintf(stderr, "SEGFAULT\n");
     fprintf(stderr, "(bad magic number)\n");
     #endif
-    //pthread_mutex_unlock(&myAllocators.nextFitAllocator.nextFitLock);
     return (-1);
   }
 
@@ -376,9 +356,8 @@ int nextFitFree (void * ptr)
   addFreeNode(freePtr);
 
   //now, we attempt to coalesce
-  nextFitCoalesce(myAllocators.nextFitAllocator.freeHead);
+  nextFitCoalesce(freePtr);
 
-  //pthread_mutex_unlock(&myAllocators.nextFitAllocator.nextFitLock);
   return 0;
 }
 
@@ -430,7 +409,6 @@ void nextFitCoalesce (struct FreeHeader * freeHeadPtr)
   //coalesce with next neighbor
   if (nextNeighborIsFree)
   {
-    //freeHeadPtr->next = nextNeighbor->next;
     removeFreeNode(nextNeighbor);
     freeHeadPtr->length += nextNeighbor->length + sizeof(struct FreeHeader);
   }
@@ -438,10 +416,9 @@ void nextFitCoalesce (struct FreeHeader * freeHeadPtr)
   //coalesce with prev neighbor
   if (prevNeighbor != NULL)
   {
-    removeFreeNode(prevNeighbor);
     prevNeighbor->next = freeHeadPtr->next;
     prevNeighbor->length += freeHeadPtr->length + sizeof(struct FreeHeader);
-    myAllocators.nextFitAllocator.freeHead = prevNeighbor;
+    removeFreeNode(freeHeadPtr);
   }
 
 }
@@ -492,8 +469,12 @@ void addFreeNode (struct FreeHeader * freePtr)
   }
 
   while (itr != NULL)
-  {
-    if (itr->next == NULL)
+  {  
+    if(itr == freePtr){
+      //nothing already in list
+      return;
+    }
+    else if (itr->next == NULL)
     {
       itr->next = freePtr;
       freePtr->next = NULL;
