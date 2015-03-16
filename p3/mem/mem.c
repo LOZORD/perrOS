@@ -41,6 +41,8 @@ struct memAllocators
 
 struct memAllocators myAllocators;
 pthread_mutex_t mainLock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t slabLock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t nextFitLock = PTHREAD_MUTEX_INITIALIZER;
 
 static volatile int initializedOnce = 0;
 
@@ -115,10 +117,8 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
 //TODO: init memory to zero
 void * Mem_Alloc (int size)
 {
-  pthread_mutex_lock(&mainLock);
   if (!initializedOnce)
   {
-    pthread_mutex_unlock(&mainLock);
     return NULL;
   }
 
@@ -126,27 +126,27 @@ void * Mem_Alloc (int size)
   //attempt to slab allocate
   if (size == myAllocators.slabUnitSize)
   {
+    pthread_mutex_lock(&slabLock);
     ret = slabPop();
+    pthread_mutex_unlock(&slabLock);
     if (ret != NULL)
     {
-      pthread_mutex_unlock(&mainLock);
       return ret;
     }
   }
 
   //we do a next fit allocation, or slab couldn't allocate
+  pthread_mutex_lock(&nextFitLock);
   ret = nextFitAlloc(size);
+  pthread_mutex_unlock(&nextFitLock);
 
-  pthread_mutex_unlock(&mainLock);
   return ret;
 }
 
 int Mem_Free (void * ptr)
 {
-  pthread_mutex_lock(&mainLock);
   if (!initializedOnce)
   {
-    pthread_mutex_unlock(&mainLock);
     return -1;
   }
 
@@ -157,7 +157,6 @@ int Mem_Free (void * ptr)
     #if DEBUG
     fprintf(stderr, "null pointer or improperly aligned pointer\n");
     #endif
-    pthread_mutex_unlock(&mainLock);
     return (-1);
   }
 
@@ -168,7 +167,6 @@ int Mem_Free (void * ptr)
     #if DEBUG
     fprintf(stderr, "pointer is out of bounds\n");
     #endif
-    pthread_mutex_unlock(&mainLock);
     return (-1);
   }
 
@@ -181,25 +179,26 @@ int Mem_Free (void * ptr)
     if((int)(myAllocators.nextFitRegionStartPtr - ptr) % myAllocators.slabUnitSize != 0)
     {
       fprintf(stderr, "SEGFAULT\n");
-      pthread_mutex_unlock(&mainLock);
       return -1;
     }
 
+    pthread_mutex_lock(&slabLock);
     slabPush(ptr); //ignore return val???
+    pthread_mutex_unlock(&slabLock);
   }
   else
   {
     //TODO: next fit free
+    pthread_mutex_lock(&nextFitLock);
     retVal = nextFitFree(ptr);
+    pthread_mutex_unlock(&nextFitLock);
   }
-  pthread_mutex_unlock(&mainLock);
   return retVal;
 }
 
 void Mem_Dump()
 {
   //lock the entire segment
-  pthread_mutex_lock(&mainLock);
 
   struct freeSlabNode * slabItr = myAllocators.topOfSlabStack;
   int slabCount = 0;
@@ -225,7 +224,6 @@ void Mem_Dump()
     nFCount++;
   }
   fprintf(stderr, "\n\nFOUND %d NEXT FIT BLOCKS\n--DONE--\n", nFCount);
-  pthread_mutex_unlock(&mainLock);
 }
 
 
