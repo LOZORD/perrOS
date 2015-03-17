@@ -89,7 +89,7 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
   {
     //fprintf(stderr, "Couldn't get memory!\n");
     pthread_mutex_unlock(&mainLock);
-    exit(-1);
+    return NULL;
   }
 
   myAllocators.topOfSlabStack = NULL;
@@ -152,7 +152,7 @@ void * Mem_Alloc (int size)
 int Mem_Free (void * ptr)
 {
   if (!initializedOnce)
-  {
+  { 
     return -1;
   }
 
@@ -187,7 +187,6 @@ int Mem_Free (void * ptr)
       fprintf(stderr, "SEGFAULT\n");
       return -1;
     }
-
     pthread_mutex_lock(&slabLock);
     slabPush(ptr); //ignore return val???
     pthread_mutex_unlock(&slabLock);
