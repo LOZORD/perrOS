@@ -110,6 +110,15 @@ int main (int argc, char ** argv)
   assert(Mem_Free(pArr[0]) == 0);
   assert(Mem_Alloc(16) != NULL);
 
+  int j;
+  int k;
+  for(j = 0; j < 16; j++){
+    for(k = 0; k < 16; k++){ 
+      assert(((char *)pArr[k])[j] == 0);
+    }
+    assert(((char *)pArr[19])[j] == 0);
+  }
+
   /*
   for(; i < 32; i++)
   {

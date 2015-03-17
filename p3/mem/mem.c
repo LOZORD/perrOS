@@ -22,6 +22,7 @@ int     nextFitFree(void * ptr);
 void    nextFitCoalesce (struct FreeHeader * freeHeadPtr);
 void    addFreeNode (struct FreeHeader * freePtr);
 void    removeFreeNode (struct FreeHeader * freePtr);
+void initToZero(void * ptr, int isNextFit);
 
 struct nextFitAllocator
 {
@@ -131,6 +132,7 @@ void * Mem_Alloc (int size)
     pthread_mutex_unlock(&slabLock);
     if (ret != NULL)
     {
+      initToZero(ret, 0);
       return ret;
     }
   }
@@ -139,6 +141,10 @@ void * Mem_Alloc (int size)
   pthread_mutex_lock(&nextFitLock);
   ret = nextFitAlloc(size);
   pthread_mutex_unlock(&nextFitLock);
+
+  if(size == myAllocators.slabUnitSize && ret != NULL){
+    initToZero(ret, 1);
+  }
 
   return ret;
 }
@@ -492,4 +498,15 @@ void addFreeNode (struct FreeHeader * freePtr)
     fprintf(stderr, "here 506\n"); //XXX
     #endif
   }
+}
+
+void initToZero(void * ptr, int isNextFit){
+    char * itr = ptr;
+    if(isNextFit){
+      itr += sizeof(struct AllocatedHeader);
+    }
+    //set everything to 0
+    for(; itr < ((char *)(ptr + myAllocators.slabUnitSize)); itr++){
+      *itr = 0;
+    }
 }
