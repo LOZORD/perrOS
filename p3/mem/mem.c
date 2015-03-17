@@ -412,6 +412,9 @@ void nextFitCoalesce (struct FreeHeader * freeHeadPtr)
   //coalesce with next neighbor
   if (nextNeighborIsFree)
   {
+    if(nextNeighbor == myAllocators.nextFitAllocator.nextPtr){
+      myAllocators.nextFitAllocator.nextPtr = freeHeadPtr;
+    }
     removeFreeNode(nextNeighbor);
     freeHeadPtr->length += nextNeighbor->length + sizeof(struct FreeHeader);
   }
@@ -419,6 +422,9 @@ void nextFitCoalesce (struct FreeHeader * freeHeadPtr)
   //coalesce with prev neighbor
   if (prevNeighbor != NULL)
   {
+    if(freeHeadPtr == myAllocators.nextFitAllocator.nextPtr){
+      myAllocators.nextFitAllocator.nextPtr = prevNeighbor;
+    }
     prevNeighbor->next = freeHeadPtr->next;
     prevNeighbor->length += freeHeadPtr->length + sizeof(struct FreeHeader);
     removeFreeNode(freeHeadPtr);

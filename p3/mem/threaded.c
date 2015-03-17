@@ -11,7 +11,7 @@ char* buffer[MAX];
 int fill = 0;
 int use = 0;
 int count = 0;
-int loops = 1000;
+int loops = 10000;
 
 void put(char *ptr)
 {
@@ -83,21 +83,29 @@ void initSync()
 int main()
 {
   printf("STARTING THREADED\n");
-	assert(Mem_Init(8192,64) != NULL);
+	assert(Mem_Init(16384,64) != NULL);
 
 	initSync();
 
-	pthread_t p1,p2,c1,c2;
+	pthread_t p1,p2,p3,p4,c1,c2,c3,c4;
 
 	pthread_create(&p1, NULL, producer, NULL);
 	pthread_create(&p2, NULL, producer, NULL);
+	pthread_create(&p3, NULL, producer, NULL);
+	pthread_create(&p4, NULL, producer, NULL);
 	pthread_create(&c1, NULL, consumer, NULL);
 	pthread_create(&c2, NULL, consumer, NULL);
+	pthread_create(&c3, NULL, consumer, NULL);
+	pthread_create(&c4, NULL, consumer, NULL);
 	
 	pthread_join(p1, NULL);
 	pthread_join(p2, NULL);
+	pthread_join(p3, NULL);
+	pthread_join(p4, NULL);
 	pthread_join(c1, NULL);
 	pthread_join(c2, NULL);
+	pthread_join(c3, NULL);
+	pthread_join(c4, NULL);
   printf("DONE\n");
 
 	exit(0);	
