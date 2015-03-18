@@ -1,0 +1,19 @@
+Name: Leo Rudberg
+CSL-ID: leo
+Name: Nicholas Hyatt
+CSL-ID: hyatt
+(Leave the second name and ID blank if working alone)
+(Do NOT suffix your CSL IDs with @cs.wisc.edu, the ID alone is sufficient)
+
+Implementation Details:
+
+We implement two allocators, a stack-based slab allocator, and a next-fit
+allocator. By doing this, we fleshed out the following API:
+
+* Mem_Init
+* Mem_Alloc
+* Mem_Free
+* Mem_Dump
+
+according to the spec. We wrote several tests to examine corner cases of the
+assignment.
