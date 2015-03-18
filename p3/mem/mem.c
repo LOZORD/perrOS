@@ -23,6 +23,7 @@ void    nextFitCoalesce (struct FreeHeader * freeHeadPtr);
 void    addFreeNode (struct FreeHeader * freePtr);
 void    removeFreeNode (struct FreeHeader * freePtr);
 void initToZero(void * ptr, int isNextFit);
+int  fitToAlignSize (int size);
 
 struct nextFitAllocator
 {
@@ -37,6 +38,7 @@ struct memAllocators
   struct freeSlabNode * topOfSlabStack;
   void * nextFitRegionStartPtr;
   int slabUnitSize;
+  int roundedSlabAllocationSize;
   int sizeOfRegion;
 };
 
@@ -52,8 +54,11 @@ int fdin;
 void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
 {
   pthread_mutex_lock(&mainLock);
+
   //sanity check
-  if (sizeOfRegion < 4 || slabSize < 1 || sizeOfRegion < slabSize || (sizeOfRegion / 4) < slabSize)
+  myAllocators.roundedSlabAllocationSize = fitToAlignSize(slabSize);
+  if (sizeOfRegion < 4 || slabSize < 1 ||
+    sizeOfRegion < myAllocators.roundedSlabAllocationSize)
   {
     pthread_mutex_unlock(&mainLock);
     return NULL;
@@ -70,10 +75,12 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
     initializedOnce = 1;
   }
 
+  //we are guaranteed a region of a size that is a multiple of 4
   assert(sizeOfRegion % 4 == 0);
 
   myAllocators.slabUnitSize = slabSize;
   myAllocators.sizeOfRegion = sizeOfRegion;
+  myAllocators.roundedSlabAllocationSize = fitToAlignSize(slabSize);
 
   int slabRegionSize = sizeOfRegion / 4;
 
@@ -87,7 +94,9 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
 
   if (myAllocators.regionStartPtr == MAP_FAILED)
   {
-    //fprintf(stderr, "Couldn't get memory!\n");
+    #if DEBUG
+    fprintf(stderr, "Couldn't get memory!\n");
+    #endif
     pthread_mutex_unlock(&mainLock);
     return NULL;
   }
@@ -96,12 +105,13 @@ void * Mem_Init(int sizeOfRegion, int slabSize) //TODO greater than 8?
 
   myAllocators.nextFitRegionStartPtr = myAllocators.regionStartPtr + slabRegionSize;
 
-  void * itr = myAllocators.nextFitRegionStartPtr-slabSize;
+  void * itr = myAllocators.nextFitRegionStartPtr - myAllocators.roundedSlabAllocationSize;
 
+  //initialize the slabs
   while (itr >= myAllocators.regionStartPtr)
   {
     slabPush((struct freeSlabNode *)(itr));
-    itr -= slabSize;
+    itr -= myAllocators.roundedSlabAllocationSize;
   }
 
   //init the nextFitAllocator
@@ -142,6 +152,7 @@ void * Mem_Alloc (int size)
   ret = nextFitAlloc(size);
   pthread_mutex_unlock(&nextFitLock);
 
+  //initToZero iff user requests the special size
   if(size == myAllocators.slabUnitSize && ret != NULL){
     initToZero(ret, 1);
   }
@@ -152,21 +163,13 @@ void * Mem_Alloc (int size)
 int Mem_Free (void * ptr)
 {
   if (!initializedOnce)
-  { 
+  {
     return -1;
   }
 
-  unsigned long ptrVal = (unsigned long) ptr;
-  if (ptr == NULL || ptrVal % ALIGN_SIZE != 0)
-  {
-    fprintf(stderr, "SEGFAULT\n");
-    #if DEBUG
-    fprintf(stderr, "null pointer or improperly aligned pointer\n");
-    #endif
-    return (-1);
-  }
-
-  if (ptr < myAllocators.regionStartPtr ||
+  //verify that the pointer is within the bounds of the mem region
+  //this check includes if ptr == NULL
+  if (!ptr || ptr < myAllocators.regionStartPtr ||
     ptr > (myAllocators.regionStartPtr + myAllocators.sizeOfRegion))
   {
     fprintf(stderr, "SEGFAULT\n");
@@ -176,15 +179,24 @@ int Mem_Free (void * ptr)
     return (-1);
   }
 
+  unsigned long ptrVal = (unsigned long) ptr;
+  if (ptrVal % ALIGN_SIZE != 0)
+  {
+    #if DEBUG
+    fprintf(stderr, "null pointer or improperly aligned pointer\n");
+    #endif
+    return (-1);
+  }
+
   int isSlabAllocated = ptr < myAllocators.nextFitRegionStartPtr ? 1 : 0;
   int retVal = 0;
 
   if (isSlabAllocated)
   {
-    //if the pointer does not correspond to a slab of slabUnitSize
-    if((int)(myAllocators.nextFitRegionStartPtr - ptr) % myAllocators.slabUnitSize != 0)
+    //if the pointer does not correspond to a slab of roundedSlabAllocationSize
+    if((int)(myAllocators.nextFitRegionStartPtr - ptr) % myAllocators.roundedSlabAllocationSize != 0)
     {
-      fprintf(stderr, "SEGFAULT\n");
+      //Not necessarily a segfault, just an error
       return -1;
     }
     pthread_mutex_lock(&slabLock);
@@ -242,9 +254,10 @@ void * slabPush (struct freeSlabNode * nodeToAdd)
 
 void * slabPop ()
 {
+  //if the stack is empty
   if (myAllocators.topOfSlabStack == NULL)
   {
-    return NULL; //empty stack
+    return NULL;
   }
   void * temp = myAllocators.topOfSlabStack;
   myAllocators.topOfSlabStack = myAllocators.topOfSlabStack->next;
@@ -255,8 +268,9 @@ void * nextFitAlloc (int size)
 {
   //first make allocation 16 btye-aligned
 
-  int alignedSize = 0;
+  int alignedSize = fitToAlignSize(size);
 
+  /*
   if (size % ALIGN_SIZE != 0)
   {
     alignedSize = size + (ALIGN_SIZE -(size % ALIGN_SIZE));
@@ -265,6 +279,7 @@ void * nextFitAlloc (int size)
   {
     alignedSize = size;
   }
+  */
 
   //now we attempt to allocated alignedSize bytes
 
@@ -337,12 +352,14 @@ int nextFitFree (void * ptr)
 
   if (allocatedPtr->magic != (void *)MAGIC)
   {
+    //This is an error, but not a segfault
     #if DEBUG
-    fprintf(stderr, "SEGFAULT\n");
     fprintf(stderr, "(bad magic number)\n");
     #endif
     return (-1);
   }
+
+  allocatedPtr->magic = NULL; //we are no longer busy/allocated
 
   int length = allocatedPtr->length;
 
@@ -478,7 +495,7 @@ void addFreeNode (struct FreeHeader * freePtr)
   }
 
   while (itr != NULL)
-  {  
+  {
     if(itr == freePtr){
       //nothing already in list
       return;
@@ -511,7 +528,19 @@ void initToZero(void * ptr, int isNextFit){
       itr += sizeof(struct AllocatedHeader);
     }
     //set everything to 0
-    for(; itr < ((char *)(ptr + myAllocators.slabUnitSize)); itr++){
+    for(; itr < ((char *)(ptr + myAllocators.roundedSlabAllocationSize)); itr++){
       *itr = 0;
     }
+}
+
+int fitToAlignSize (int size)
+{
+  if (size % ALIGN_SIZE != 0)
+  {
+    return size + (ALIGN_SIZE -(size % ALIGN_SIZE));
+  }
+  else
+  {
+    return size;
+  }
 }

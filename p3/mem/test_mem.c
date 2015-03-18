@@ -119,12 +119,26 @@ int main (int argc, char ** argv)
     assert(((char *)pArr[19])[j] == 0);
   }
 
-  /*
-  for(; i < 32; i++)
-  {
-    pArr[i] = Mem_Alloc(
-  }
-  */
+  assert(Mem_Free(pArr[19]) == 0);
+  assert(Mem_Free(pArr[18]) == 0);
+
+  pArr[19] = Mem_Alloc(256);
+
+  assert(pArr[19] != NULL);
+  fprintf(stderr, "\t\t\t\t\t\t\tpArr[19] is %p\n", pArr[19]);
+
+  fprintf(stderr, "*** should be segfault ***\n");
+  assert(Mem_Free(NULL) == -1);
+
+  struct AllocatedHeader * aHead = pArr[19] - sizeof(struct AllocatedHeader);
+  void * maybeMagic = aHead->magic;
+  fprintf(stderr, "\t\t\t\tMaybe Magic? %p\n", maybeMagic);
+  assert(maybeMagic == (void *)MAGIC);
+
+  assert(Mem_Free(pArr[19]) == 0);
+  assert(aHead->magic != (void *)MAGIC);
+
+  assert(Mem_Free(pArr[19]) == -1);
 
   printf("TESTS PASS!\n");
   exit(EXIT_SUCCESS);
