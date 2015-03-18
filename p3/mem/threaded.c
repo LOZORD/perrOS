@@ -1,4 +1,5 @@
 /* multi threaded alloc and free calls */
+#include <unistd.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -82,8 +83,16 @@ void initSync()
 
 int main()
 {
-  printf("STARTING THREADED\n");
+  //printf("STARTING THREADED\n");
 	assert(Mem_Init(16384,64) != NULL);
+
+  int i;
+  int pid = 1;
+  for(i = 0; i < 100; i++){
+    if(pid){
+     pid=fork();
+    }
+  }
 
 	initSync();
 

@@ -10,6 +10,7 @@ int main (int argc, char ** argv)
 {
   printf("Hello world!\n");
 
+  void * pArr [128];
   void * heapPtr = Mem_Init(-1,-1);
 
   assert(heapPtr == NULL); //bad values
@@ -22,7 +23,7 @@ int main (int argc, char ** argv)
 
   assert(heapPtr == NULL);
 
-  heapPtr = Mem_Init(1024, 16); // good init call
+  heapPtr = Mem_Init(1024, 16); // good init call, 16 spec size
 
   assert(heapPtr != NULL);
 
@@ -35,10 +36,6 @@ int main (int argc, char ** argv)
   //TODO: use threading to test mutex
   //
   //
-
-
-
-  void * pArr [128];
 
   pArr[0] = Mem_Alloc(16);
   fprintf(stderr, "\tALLOC'D SLAB: %p\n", pArr[0]);
