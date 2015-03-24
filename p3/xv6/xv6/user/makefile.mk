@@ -74,7 +74,7 @@ USER_LDFLAGS += --omagic
 USER_LDFLAGS += --entry=main
 
 # location in memory where the program will be loaded
-USER_LDFLAGS += --section-start=.text=0x0
+USER_LDFLAGS += --section-start=.text=0x0 #XXX should account for one page NULL-guard
 
 user/bin:
 	mkdir -p user/bin

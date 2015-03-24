@@ -32,7 +32,7 @@ exec(char *path, char **argv)
     goto bad;
 
   // Load program into memory.
-  sz = 0;
+  sz = 0; //XXX might have to add PGSIZE to account for NULL-guard
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;
@@ -47,6 +47,8 @@ exec(char *path, char **argv)
   }
   iunlockput(ip);
   ip = 0;
+
+  //XXX insert one page NULL-guard here
 
   // Allocate a one-page stack at the next page boundary
   sz = PGROUNDUP(sz);
