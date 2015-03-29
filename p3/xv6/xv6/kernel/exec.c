@@ -33,7 +33,7 @@ exec(char *path, char **argv) //XXX EXEC IMPL HERE
     goto bad;
 
   // Load program into memory.
-  sz = 0x000;//PGSIZE; //XXX might have to add PGSIZE to account for NULL-guard
+  sz = PGSIZE; //XXX might have to add PGSIZE to account for NULL-guard
   //TODO edit this initial value
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
