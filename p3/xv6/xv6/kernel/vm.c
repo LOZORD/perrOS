@@ -106,7 +106,7 @@ mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
 // than its memory.
 // 
 // setupkvm() and exec() set up every page table like this:
-//   0..640K          : user memory (text, data, stack, heap)
+//   0..640K          : user memory (text, data, stack, heap) //XXX
 //   640K..1M         : mapped direct (for IO space)
 //   1M..end          : mapped direct (for the kernel's text and data)
 //   end..PHYSTOP     : mapped direct (kernel heap and user pages)
@@ -226,7 +226,7 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 // Allocate page tables and physical memory to grow process from oldsz to
 // newsz, which need not be page aligned.  Returns new size or 0 on error.
 int
-allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
+allocuvm(pde_t *pgdir, uint oldsz, uint newsz) //XXX
 {
   char *mem;
   uint a;
@@ -297,16 +297,17 @@ freevm(pde_t *pgdir)
 // Given a parent process's page table, create a copy
 // of it for a child.
 pde_t*
-copyuvm(pde_t *pgdir, uint sz)
+copyuvm(pde_t *pgdir, uint sz) //XXX
 {
   pde_t *d;
   pte_t *pte;
   uint pa, i;
   char *mem;
 
+  //get a new page system
   if((d = setupkvm()) == 0)
     return 0;
-  for(i = 0; i < sz; i += PGSIZE){
+  for(i = 0 /*PGSIZE*/; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, (void*)i, 0)) == 0)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))

@@ -7,6 +7,8 @@
 #include "syscall.h"
 #include "sysfunc.h"
 
+//XXX TODO XXX
+
 // User code makes a system call with INT T_SYSCALL.
 // System call number in %eax.
 // Arguments on the stack, from the user call to the C
@@ -17,8 +19,12 @@
 int
 fetchint(struct proc *p, uint addr, int *ip)
 {
+  //cprintf("hola 1\n");
   if(addr >= p->sz || addr+4 > p->sz)
+  {
+    //cprintf("bad 1\n");
     return -1;
+  }
   *ip = *(int*)(addr);
   return 0;
 }
@@ -30,9 +36,12 @@ int
 fetchstr(struct proc *p, uint addr, char **pp)
 {
   char *s, *ep;
-
+  //cprintf("hola 2\n");
   if(addr >= p->sz)
+  {
+    //cprintf("bad 2\n");
     return -1;
+  }
   *pp = (char*)addr;
   ep = (char*)p->sz;
   for(s = *pp; s < ep; s++)

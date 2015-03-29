@@ -7,7 +7,7 @@
 #include "elf.h"
 
 int
-exec(char *path, char **argv)
+exec(char *path, char **argv) //XXX EXEC IMPL HERE
 {
   char *s, *last;
   int i, off;
@@ -28,11 +28,13 @@ exec(char *path, char **argv)
   if(elf.magic != ELF_MAGIC)
     goto bad;
 
+  //reset the page table/kernal stack <-- do not modify
   if((pgdir = setupkvm()) == 0)
     goto bad;
 
   // Load program into memory.
-  sz = 0; //XXX might have to add PGSIZE to account for NULL-guard
+  sz = 0x000;//PGSIZE; //XXX might have to add PGSIZE to account for NULL-guard
+  //TODO edit this initial value
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;
@@ -40,8 +42,10 @@ exec(char *path, char **argv)
       continue;
     if(ph.memsz < ph.filesz)
       goto bad;
+    //XXX may need to edit allocuvm in kernel/vm.c
     if((sz = allocuvm(pgdir, sz, ph.va + ph.memsz)) == 0)
       goto bad;
+    //copy the contents of the file into the newly allocated pages
     if(loaduvm(pgdir, (char*)ph.va, ip, ph.offset, ph.filesz) < 0)
       goto bad;
   }
