@@ -65,9 +65,9 @@ argptr(int n, char **pp, int size)
 {
   int i;
   
-  if(argint(n, &i) < 0)
+  if(argint(n, &i) < 0) //error check, not addr check
     return -1;
-  if((uint)i >= proc->sz || (uint)i+size > proc->sz)
+  if((uint)i >= (proc->sz) || (uint)i+size > (proc->sz) || (uint) i < PGSIZE) //XXX check that pp is not in null guard page
     return -1;
   *pp = (char*)i;
   return 0;
