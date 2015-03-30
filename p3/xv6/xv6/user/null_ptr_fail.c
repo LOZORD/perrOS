@@ -9,7 +9,7 @@ int main (int argc, char ** argv) {
   printf(1, "GOOD ptr val: %x\n", *ptr);
   ptr = (void *) 0x1000;
   printf(1, "CODE ptr val: %x\n", *ptr);
-  ptr = 0;
+  ptr = 0;//(void *) 0x1000 - 1;
   printf(1, "BAD  ptr val: %x\n", *ptr);
   exit();
 }

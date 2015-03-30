@@ -19,6 +19,8 @@ USER_PROGS := \
 	null_ptr_fail\
 	bounds\
 	bounds3\
+	addr_locs\
+	stack_overflow\
 	zombie
 
 USER_PROGS := $(addprefix user/, $(USER_PROGS))

@@ -98,8 +98,6 @@ exec(char *path, char **argv) //XXX EXEC IMPL HERE
   switchuvm(proc);
   freevm(oldpgdir);
 
-  //cprintf("proc->sz:%x\nproc->stackSz:%x\nproc->tf->esp:%x\n", proc->sz, proc->stackSz, proc->tf->esp);
-
   return 0;
 
  bad:

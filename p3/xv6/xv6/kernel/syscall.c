@@ -7,8 +7,6 @@
 #include "syscall.h"
 #include "sysfunc.h"
 
-//XXX TODO XXX
-
 // User code makes a system call with INT T_SYSCALL.
 // System call number in %eax.
 // Arguments on the stack, from the user call to the C
