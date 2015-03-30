@@ -33,8 +33,7 @@ exec(char *path, char **argv) //XXX EXEC IMPL HERE
     goto bad;
 
   // Load program into memory.
-  sz = PGSIZE; //XXX might have to add PGSIZE to account for NULL-guard
-  //TODO edit this initial value
+  sz = PGSIZE; //add PGSIZE to account for NULL-guard
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;
@@ -56,11 +55,14 @@ exec(char *path, char **argv) //XXX EXEC IMPL HERE
 
   // Allocate a one-page stack at the next page boundary
   sz = PGROUNDUP(sz);
-  if((sz = allocuvm(pgdir, sz, sz + PGSIZE)) == 0)
+  if((allocuvm(pgdir, USERTOP - PGSIZE, USERTOP)) == 0)
     goto bad;
 
+
+  //sz += PGSIZE;
+
   // Push argument strings, prepare rest of stack in ustack.
-  sp = sz;
+  sp = USERTOP;
   for(argc = 0; argv[argc]; argc++) {
     if(argc >= MAXARG)
       goto bad;
@@ -90,10 +92,13 @@ exec(char *path, char **argv) //XXX EXEC IMPL HERE
   oldpgdir = proc->pgdir;
   proc->pgdir = pgdir;
   proc->sz = sz;
+  proc->stackSz = PGSIZE;
   proc->tf->eip = elf.entry;  // main
   proc->tf->esp = sp;
   switchuvm(proc);
   freevm(oldpgdir);
+
+  cprintf("proc->sz:%x\nproc->stackSz:%x\nproc->tf->esp:%x\n", proc->sz, proc->stackSz, proc->tf->esp);
 
   return 0;
 

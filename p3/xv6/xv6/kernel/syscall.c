@@ -67,8 +67,22 @@ argptr(int n, char **pp, int size)
   
   if(argint(n, &i) < 0) //error check, not addr check
     return -1;
+
+  uint aVal = (uint) i;
+  cprintf("GOT aVal AS:%x\n", aVal);
+  if (aVal < PGSIZE)
+    return -1;
+
+  int insideCodeHeap = (aVal < proc->sz) && (aVal + size <= proc->sz);
+  int insideOfStack    = (aVal < USERTOP)  && (aVal + size <= USERTOP) && (aVal >= USERTOP - proc->stackSz);
+
+  if (!(insideCodeHeap || insideOfStack))
+    return -1;
+
+  /*
   if((uint)i >= (proc->sz) || (uint)i+size > (proc->sz) || (uint) i < PGSIZE) //XXX check that pp is not in null guard page
     return -1;
+  */
   *pp = (char*)i;
   return 0;
 }
