@@ -110,6 +110,8 @@ growproc(int n)
   
   sz = proc->sz;
   if(n > 0){
+    if(sz + n > proc->stackSz - PGSIZE)
+      return -1;
     if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0)
       return -1;
   } else if(n < 0){
@@ -136,7 +138,7 @@ fork(void)
 
   //XXX do stuff to account for one page NULL-guard here
   // Copy process state from p.
-  if((np->pgdir = copyuvm(proc->pgdir, proc->sz)) == 0){
+  if((np->pgdir = copyuvm(proc->pgdir, proc->sz, proc->stackSz)) == 0){
     kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;

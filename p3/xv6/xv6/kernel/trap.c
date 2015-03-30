@@ -75,6 +75,16 @@ trap(struct trapframe *tf)
             cpu->id, tf->cs, tf->eip);
     lapiceoi();
     break;
+  case T_PGFLT:
+    if(rcr2() > proc->stackSz - PGSIZE && rcr2() < proc->stackSz && proc->sz + PGSIZE < proc->stackSz - PGSIZE){
+      if((allocuvm(proc->pgdir, proc->stackSz - PGSIZE, proc->stackSz)) == 0)
+      {
+       proc->killed = 1; 
+       cprintf("allocuvm did'nt work!\n");
+      }
+      proc->stackSz -= PGSIZE;
+      break;
+    }
    
   default:
     if(proc == 0 || (tf->cs&3) == 0){

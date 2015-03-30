@@ -54,7 +54,7 @@ exec(char *path, char **argv) //XXX EXEC IMPL HERE
   //XXX insert one page NULL-guard here
 
   // Allocate a one-page stack at the next page boundary
-  sz = PGROUNDUP(sz);
+  //sz = PGROUNDUP(sz);
   if((allocuvm(pgdir, USERTOP - PGSIZE, USERTOP)) == 0)
     goto bad;
 
@@ -92,13 +92,13 @@ exec(char *path, char **argv) //XXX EXEC IMPL HERE
   oldpgdir = proc->pgdir;
   proc->pgdir = pgdir;
   proc->sz = sz;
-  proc->stackSz = PGSIZE;
+  proc->stackSz = USERTOP - PGSIZE; //start with 1 page stack
   proc->tf->eip = elf.entry;  // main
   proc->tf->esp = sp;
   switchuvm(proc);
   freevm(oldpgdir);
 
-  cprintf("proc->sz:%x\nproc->stackSz:%x\nproc->tf->esp:%x\n", proc->sz, proc->stackSz, proc->tf->esp);
+  //cprintf("proc->sz:%x\nproc->stackSz:%x\nproc->tf->esp:%x\n", proc->sz, proc->stackSz, proc->tf->esp);
 
   return 0;
 

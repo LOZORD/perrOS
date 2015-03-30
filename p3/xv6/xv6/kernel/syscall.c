@@ -19,12 +19,12 @@
 int
 fetchint(struct proc *p, uint addr, int *ip)
 {
-  //cprintf("hola 1\n");
-  if(addr >= p->sz || addr+4 > p->sz)
-  {
-    //cprintf("bad 1\n");
+  if(addr < PGSIZE && proc->pid != 1)
     return -1;
-  }
+
+  if((addr >= p->sz || addr+4 > p->sz) && (addr < p->stackSz || addr >= USERTOP || addr+4 >= USERTOP))
+    return -1;
+
   *ip = *(int*)(addr);
   return 0;
 }
@@ -36,14 +36,14 @@ int
 fetchstr(struct proc *p, uint addr, char **pp)
 {
   char *s, *ep;
-  //cprintf("hola 2\n");
-  if(addr >= p->sz)
-  {
-    //cprintf("bad 2\n");
+  if(addr < PGSIZE && proc->pid != 1)
     return -1;
-  }
+
+  if(addr >= p->sz && (addr < p->stackSz || addr >= USERTOP))
+    return -1;
+
   *pp = (char*)addr;
-  ep = (char*)p->sz;
+  ep = (char*)USERTOP;
   for(s = *pp; s < ep; s++)
     if(*s == 0)
       return s - *pp;
@@ -64,25 +64,20 @@ int
 argptr(int n, char **pp, int size)
 {
   int i;
-  
+   
   if(argint(n, &i) < 0) //error check, not addr check
     return -1;
 
   uint aVal = (uint) i;
-  cprintf("GOT aVal AS:%x\n", aVal);
   if (aVal < PGSIZE)
     return -1;
 
   int insideCodeHeap = (aVal < proc->sz) && (aVal + size <= proc->sz);
-  int insideOfStack    = (aVal < USERTOP)  && (aVal + size <= USERTOP) && (aVal >= USERTOP - proc->stackSz);
+  int insideOfStack    = (aVal < USERTOP)  && (aVal + size <= USERTOP) && (aVal >= proc->stackSz);
 
   if (!(insideCodeHeap || insideOfStack))
     return -1;
 
-  /*
-  if((uint)i >= (proc->sz) || (uint)i+size > (proc->sz) || (uint) i < PGSIZE) //XXX check that pp is not in null guard page
-    return -1;
-  */
   *pp = (char*)i;
   return 0;
 }
