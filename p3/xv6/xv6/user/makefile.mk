@@ -21,6 +21,7 @@ USER_PROGS := \
 	bounds3\
 	addr_locs\
 	stack_overflow\
+	stack_stress\
 	zombie
 
 USER_PROGS := $(addprefix user/, $(USER_PROGS))
