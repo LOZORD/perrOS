@@ -443,4 +443,10 @@ procdump(void)
   }
 }
 
-
+int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
+  cprintf("entered proc_clone!\n");
+  if (!(fnc && arg && stack)) {
+    return -1;
+  }
+  return 0;
+}

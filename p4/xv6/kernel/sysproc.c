@@ -88,3 +88,23 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int sys_clone (void) {
+  void (* entryPoint) (void *) = NULL;
+  void * entryPointArgs = NULL, * stack = NULL;
+  int rc = 0;
+
+  if (argptr(0, (void *) entryPoint, sizeof(void *)) < 0) {
+    return -1;
+  }
+  if (argptr(1, entryPointArgs, sizeof(void *)) < 0) {
+    return -1;
+  }
+  if (argptr(2, stack, sizeof(void *)) < 0) {
+    return -1;
+  }
+
+  rc = proc_clone(entryPoint, entryPointArgs, stack);
+
+  return rc;
+}
