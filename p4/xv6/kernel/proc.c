@@ -445,6 +445,7 @@ procdump(void)
 
 int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   cprintf("entered proc_clone!\n");
+  cprintf("GOT ARGUMENTS:\n\tFNC:%p\n\tARG:%p\n\tSTK:%p\n", fnc, arg, stack);
   if (!(fnc && arg && stack)) {
     return -1;
   }

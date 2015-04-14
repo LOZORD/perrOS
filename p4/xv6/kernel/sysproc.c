@@ -92,15 +92,15 @@ sys_uptime(void)
 int sys_clone (void) {
   void (* entryPoint) (void *) = NULL;
   void * entryPointArgs = NULL, * stack = NULL;
-  int rc = 0;
+  int rc = 0, voidSize = sizeof(void *);
 
-  if (argptr(0, (void *) entryPoint, sizeof(void *)) < 0) {
+  if (argptr(0, (char **) &entryPoint, voidSize) < 0) {
     return -1;
   }
-  if (argptr(1, entryPointArgs, sizeof(void *)) < 0) {
+  if (argptr(1, (char **) &entryPointArgs, voidSize) < 0) {
     return -1;
   }
-  if (argptr(2, stack, sizeof(void *)) < 0) {
+  if (argptr(2, (char **) &stack, voidSize) < 0) {
     return -1;
   }
 
