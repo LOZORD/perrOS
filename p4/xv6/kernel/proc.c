@@ -53,11 +53,11 @@ found:
     return 0;
   }
   sp = p->kstack + KSTACKSIZE;
-  
+
   // Leave room for trap frame.
   sp -= sizeof *p->tf;
   p->tf = (struct trapframe*)sp;
-  
+
   // Set up new context to start executing at forkret,
   // which returns to trapret.
   sp -= 4;
@@ -77,7 +77,7 @@ userinit(void)
 {
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
-  
+
   p = allocproc();
   acquire(&ptable.lock);
   initproc = p;
@@ -107,7 +107,7 @@ int
 growproc(int n)
 {
   uint sz;
-  
+
   sz = proc->sz;
   if(n > 0){
     if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0)
@@ -144,6 +144,7 @@ fork(void)
   np->sz = proc->sz;
   np->parent = proc;
   *np->tf = *proc->tf;
+  np->isThread = 0; //TODO case that child thread forks a new (main) process
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -152,7 +153,7 @@ fork(void)
     if(proc->ofile[i])
       np->ofile[i] = filedup(proc->ofile[i]);
   np->cwd = idup(proc->cwd);
- 
+
   pid = np->pid;
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
@@ -322,7 +323,7 @@ forkret(void)
 {
   // Still holding ptable.lock from scheduler.
   release(&ptable.lock);
-  
+
   // Return to "caller", actually trapret (see allocproc).
 }
 
@@ -425,7 +426,7 @@ procdump(void)
   struct proc *p;
   char *state;
   uint pc[10];
-  
+
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == UNUSED)
       continue;
@@ -443,11 +444,80 @@ procdump(void)
   }
 }
 
+//TODO
 int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   cprintf("entered proc_clone!\n");
   cprintf("GOT ARGUMENTS:\n\tFNC:%p\n\tARG:%p\n\tSTK:%p\n", fnc, arg, stack);
+
+  //first check that none are null -- FNC CAN BE NULL
+  /*
   if (!(fnc && arg && stack)) {
     return -1;
   }
-  return 0;
+  */
+
+  //this will be similar to fork
+
+  int i, pid;
+  struct proc *np;
+
+  // Allocate process.
+  if((np = allocproc()) == 0)
+    return -1;
+
+  // WE DON'T NEED TO COPY THE ADDRESS SPACE!
+  //np->sz = proc->sz;
+  //np->sz = -1;
+
+  //need to make sure that threads can't new threads' parent
+  //only original proc can be the parent
+  if (proc->isThread) {
+    np->parent = proc->parent;
+  }
+  else {
+    np->parent = proc;
+  }
+
+  *np->tf = *proc->tf;
+  np->isThread = 1; //threads get cloned
+
+  // Clear %eax so that fork returns 0 in the child.
+  //np->tf->eax = 0;
+  //The thread should start execution @ func
+
+  //load the bottom of the stack with (1) fake return PC (2) arg pointer
+  //first check that it is page-aligned
+  if (stack && (int)stack % PGSIZE == 0) {
+    //good
+  }
+  else {
+    return -1;
+  }
+  np->context = (struct context*)(stack + PGSIZE);// - sizeof(struct context)); //the bottom of the stack
+  np->context->eip = (int) fnc;
+  //TODO set up context
+  /*
+  //now that the heap "stack" is good, load it with values
+
+  *(stack + PGSIZE - sizeof(void *) * 1) = 0xffffFFFF; //fake return PC value
+  *(stack + PGSIZE - sizeof(void *) * 2) = arg;
+  */
+
+  /*
+  np->context.ebp = (void *) 0xffffFFFF; // fake return pc
+  //np->context -= sizeof(void *);
+  np->context.eax = arg; // load pointer to actor's args
+  //np->context -= sizeof(void *);
+  */
+
+  //open all of the parent's files (descriptors)
+  for(i = 0; i < NOFILE; i++)
+    if(proc->ofile[i])
+      np->ofile[i] = filedup(proc->ofile[i]);
+  np->cwd = idup(proc->cwd);
+
+  pid = np->pid;
+  np->state = RUNNABLE;
+  safestrcpy(np->name, proc->name, sizeof(proc->name));
+  return pid;
 }

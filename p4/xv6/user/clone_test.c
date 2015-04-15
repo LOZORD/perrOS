@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
   rc = clone(foo, (void *) (&myNum), stackPtr);
   printf(1, "Should succeed (be 0):\t%d\n", rc);
   printf(1, "ENDING CLONE TEST WITH rc=%d\n", rc);
+  free(stackPtr);
   exit();
 }
 
