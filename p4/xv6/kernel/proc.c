@@ -191,16 +191,25 @@ exit(void)
 
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->parent == proc){
+    if(p->parent == proc && !p->isThread){
       p->parent = initproc;
-      if(p->state == ZOMBIE)
+      if(p->state == ZOMBIE) {
         wakeup1(initproc);
+      }
     }
     if (p->isThread && p->parent == proc) {
+      release(&ptable.lock); //FIXME!!!!!!!!!!!!
       kill(p->pid);
-      //TODO wait for child thread to exit
+      proc_join(p->pid);
+      acquire(&ptable.lock);
+      /*
+       * we need to account for the case that when a parent exits,
+       * it needs to kill its children
+       */
     }
   }
+  //while(wait() != -1) { }
+  //release(&ptable.lock);
 
   // Jump into the scheduler, never to return.
   proc->state = ZOMBIE;
@@ -243,6 +252,7 @@ wait(void)
         p->name[0] = 0;
         p->killed = 0;
         release(&ptable.lock);
+        //cprintf("returning due to one of my children is dead\n");
         return pid;
       }
     }
@@ -250,10 +260,12 @@ wait(void)
     // No point waiting if we don't have any children.
     if(!havekids || proc->killed){
       release(&ptable.lock);
+      //cprintf("returning due to no kids or I'm dead\n");
       return -1;
     }
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    //cprintf("\n***falling asleep***\n");
     sleep(proc, &ptable.lock);  //DOC: wait-sleep
   }
 }
@@ -465,7 +477,7 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   int i, pid;
   struct proc *np;
   //first check that the stack is not null
-  if (!stack) {
+  if (!arg || !stack) {
     return -1;
   }
 
@@ -526,13 +538,16 @@ int proc_join (int pid) {
 
   //iterate through proc table
   if (pid > 0) {
+    acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state == UNUSED)
         continue;
       if(p->pid == pid) {
         joinee = p;
+        break;
       }
     }
+    release(&ptable.lock);
   }
 
   if (pid != -1) {
