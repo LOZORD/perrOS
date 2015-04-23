@@ -223,6 +223,7 @@ wait(void)
       if(p->parent != proc)
         continue;
       havekids = 1;
+      //cprintf("Waiting for child with pid: %d to finish.\n", p->pid);
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
@@ -453,6 +454,7 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   cprintf("entered proc_clone!\n");
   cprintf("GOT ARGUMENTS:\n\tFNC:%p\n\tARG:%p\n\tSTK:%p\n", fnc, arg, stack);
 
+  //TODO test that stack is page aligned
   int i, pid;
   struct proc *np;
   //first check that the stack is not null
@@ -505,13 +507,12 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
 
 int proc_join (int pid) {
   struct proc * joinee = NULL, * p;
-
   //sanity check
   if(proc->pid == pid) {
     return -1; //why would you want to join yourself?
   }
   else if (pid <= 0) {
-    return -1;
+    return -1; //TODO -1 case (join all?)
   }
 
   cprintf("In proc_join, about to walk table...\n");
@@ -529,6 +530,11 @@ int proc_join (int pid) {
     return -1;
   }
 
+  //return if it's already completed
+  if (joinee->killed) {
+    return pid;
+  }
+
   int waitRet = 0;
 
   cprintf("In proc_join, about to call `wait`\n");
@@ -537,9 +543,11 @@ int proc_join (int pid) {
     waitRet = wait();
     cprintf("got waitRet as:\t%d\n", waitRet);
     if (waitRet == pid || waitRet <= 0) {
+      cprintf("Breaking while loop!\n");
       break;
     }
   }
 
+  cprintf("Returning from join\n");
   return waitRet;
 }

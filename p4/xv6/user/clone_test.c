@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
 {
   int myNum = 10;
   void * stackPtr = malloc(0x1000); //allocate a page...
-  
+
   if (stackPtr == NULL) {
     printf(1, "ERROR!\n");
     exit();
@@ -35,5 +35,8 @@ void foo (void * arg) {
   while (n > 0) {
     printf(1, "Count is\t%d\n", n--);
   }
+  printf(1, "child is going to sleep...\n");
+  //sleep(100);
+  printf(1, "child foo exiting!\n");
   exit();
 }
