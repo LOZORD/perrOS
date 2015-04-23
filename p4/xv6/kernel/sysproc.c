@@ -116,9 +116,8 @@ int sys_join (void) {
   if(argint(0, &pid) < 0)
     return -1;
 
-  //int joinRet = 
-  cprintf("proc_join returns: %d\n", proc_join(pid));
+  int joinRet = proc_join(pid);
   cprintf("Got pid as %d\n", pid);
-  //cprintf("Got jR as %d\n", joinRet);
-  return -1;
+  cprintf("Got jR as %d\n", joinRet);
+  return joinRet;
 }
