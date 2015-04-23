@@ -195,6 +195,10 @@ exit(void)
       if(p->state == ZOMBIE)
         wakeup1(initproc);
     }
+    if (p->isThread && p->parent == proc) {
+      kill(p->pid);
+      //TODO wait for child thread to exit
+    }
   }
 
   // Jump into the scheduler, never to return.
