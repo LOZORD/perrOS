@@ -14,6 +14,7 @@ struct {
 static struct proc *initproc;
 
 int nextpid = 1;
+int lastJoinedWasThread = 0;
 extern void forkret(void);
 extern void trapret(void);
 
@@ -230,7 +231,11 @@ wait(void)
         kfree(p->kstack);
         p->kstack = 0;
         if(!p->isThread){
+          lastJoinedWasThread = 0;
           freevm(p->pgdir);
+        }
+        else {
+          lastJoinedWasThread = 1;
         }
         p->state = UNUSED;
         p->pid = 0;
@@ -513,28 +518,32 @@ int proc_join (int pid) {
   if(proc->pid == pid) {
     return -1; //why would you want to join yourself?
   }
-  else if (pid <= 0) {
-    return -1; //TODO -1 case (join all?)
+  else if (pid <= -2) {
+    return -1;
   }
 
   cprintf("In proc_join, about to walk table...\n");
 
   //iterate through proc table
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->state == UNUSED)
-      continue;
-    if(p->pid == pid) {
-      joinee = p;
+  if (pid > 0) {
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state == UNUSED)
+        continue;
+      if(p->pid == pid) {
+        joinee = p;
+      }
     }
   }
 
-  if (!joinee || !(joinee->isThread)) {
-    return -1;
-  }
+  if (pid != -1) {
+    if (!joinee || !(joinee->isThread)) {
+      return -1;
+    }
 
-  //return if it's already completed
-  if (joinee->killed) {
-    return pid;
+    //return if it's already completed
+    if (joinee->killed) {
+      return pid;
+    }
   }
 
   int waitRet = 0;
@@ -544,6 +553,9 @@ int proc_join (int pid) {
   while (1) {
     waitRet = wait();
     cprintf("got waitRet as:\t%d\n", waitRet);
+    if (lastJoinedWasThread && pid == -1) {
+      return waitRet;
+    }
     if (waitRet == pid || waitRet <= 0) {
       cprintf("Breaking while loop!\n");
       break;
