@@ -19,16 +19,19 @@ int main(int argc, char *argv[])
   printf(1, "Should fail (be -1):\t%d\n", rc);
   printf(1, "foo ptr\t%p\nmyNum ptr\t%p\nstackPtr\t%p\n", foo, &myNum, stackPtr);
   rc = clone(foo, (void *) (&myNum), stackPtr);
-  printf(1, "Should succeed (be 0):\t%d\n", rc);
+  sleep(500);
+  printf(1, "Should succeed (be >0):\t%d\n", rc);
   printf(1, "ENDING CLONE TEST WITH rc=%d\n", rc);
   free(stackPtr);
   exit();
 }
 
 void foo (void * arg) {
+  printf(1, "ENTERED FOO!\n");
   int * ptr = arg;
   int n = *ptr;
   while (n > 0) {
     printf(1, "Count is\t%d\n", n--);
   }
+  exit();
 }

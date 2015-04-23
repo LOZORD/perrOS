@@ -449,25 +449,16 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   cprintf("entered proc_clone!\n");
   cprintf("GOT ARGUMENTS:\n\tFNC:%p\n\tARG:%p\n\tSTK:%p\n", fnc, arg, stack);
 
-  //first check that none are null -- FNC CAN BE NULL
-  /*
-  if (!(fnc && arg && stack)) {
-    return -1;
-  }
-  */
-
-  //this will be similar to fork
-
   int i, pid;
   struct proc *np;
+  //first check that the stack is not null
+  if (!stack) {
+    return -1;
+  }
 
   // Allocate process.
   if((np = allocproc()) == 0)
     return -1;
-
-  // WE DON'T NEED TO COPY THE ADDRESS SPACE!
-  //np->sz = proc->sz;
-  //np->sz = -1;
 
   //need to make sure that threads can't new threads' parent
   //only original proc can be the parent
@@ -478,39 +469,16 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
     np->parent = proc;
   }
 
+  np->sz = proc->sz; //maybe??? XXX
   *np->tf = *proc->tf;
-  np->isThread = 1; //threads get cloned
+  np->tf->eip = (uint) fnc;
+  np->pgdir = proc->pgdir;
+  np->isThread = 1;
 
   // Clear %eax so that fork returns 0 in the child.
-  //np->tf->eax = 0;
-  //The thread should start execution @ func
+  np->tf->eax = 0;
 
-  //load the bottom of the stack with (1) fake return PC (2) arg pointer
-  //first check that it is page-aligned
-  if (stack && (int)stack % PGSIZE == 0) {
-    //good
-  }
-  else {
-    return -1;
-  }
-  np->context = (struct context*)(stack + PGSIZE);// - sizeof(struct context)); //the bottom of the stack
-  np->context->eip = (int) fnc;
-  //TODO set up context
-  /*
-  //now that the heap "stack" is good, load it with values
-
-  *(stack + PGSIZE - sizeof(void *) * 1) = 0xffffFFFF; //fake return PC value
-  *(stack + PGSIZE - sizeof(void *) * 2) = arg;
-  */
-
-  /*
-  np->context.ebp = (void *) 0xffffFFFF; // fake return pc
-  //np->context -= sizeof(void *);
-  np->context.eax = arg; // load pointer to actor's args
-  //np->context -= sizeof(void *);
-  */
-
-  //open all of the parent's files (descriptors)
+  //copy the file table
   for(i = 0; i < NOFILE; i++)
     if(proc->ofile[i])
       np->ofile[i] = filedup(proc->ofile[i]);
@@ -519,5 +487,14 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   pid = np->pid;
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
+
+  void * stackPtr = stack + PGSIZE;
+  stackPtr -= sizeof(void *);
+  *(uint *)(stackPtr) = (uint)(0xffffffff);
+  stackPtr -= sizeof(void *);
+  *(uint *)(stackPtr) = (uint)arg;
+  stackPtr -= sizeof(void *);
+  (np->tf->esp) = (uint) stackPtr;
+
   return pid;
 }

@@ -104,6 +104,7 @@ int sys_clone (void) {
     return -1;
   }
 
+  //return pid on success
   rc = proc_clone(entryPoint, entryPointArgs, stack);
 
   return rc;
