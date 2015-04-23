@@ -30,6 +30,7 @@ extern int ncpu;
 
 //Function decls
 int proc_clone(void (* fnc) (void *), void * arg, void * stack);
+int proc_join(int pid);
 
 // Per-CPU variables, holding pointers to the
 // current cpu and to the current process.

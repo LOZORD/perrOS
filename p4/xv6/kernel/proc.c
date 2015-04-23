@@ -502,3 +502,44 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
 
   return pid;
 }
+
+int proc_join (int pid) {
+  struct proc * joinee = NULL, * p;
+
+  //sanity check
+  if(proc->pid == pid) {
+    return -1; //why would you want to join yourself?
+  }
+  else if (pid <= 0) {
+    return -1;
+  }
+
+  cprintf("In proc_join, about to walk table...\n");
+
+  //iterate through proc table
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state == UNUSED)
+      continue;
+    if(p->pid == pid) {
+      joinee = p;
+    }
+  }
+
+  if (!joinee || !(joinee->isThread)) {
+    return -1;
+  }
+
+  int waitRet = 0;
+
+  cprintf("In proc_join, about to call `wait`\n");
+
+  while (1) {
+    waitRet = wait();
+    cprintf("got waitRet as:\t%d\n", waitRet);
+    if (waitRet == pid || waitRet <= 0) {
+      break;
+    }
+  }
+
+  return waitRet;
+}

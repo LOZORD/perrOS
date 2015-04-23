@@ -19,8 +19,10 @@ int main(int argc, char *argv[])
   printf(1, "Should fail (be -1):\t%d\n", rc);
   printf(1, "foo ptr\t%p\nmyNum ptr\t%p\nstackPtr\t%p\n", foo, &myNum, stackPtr);
   rc = clone(foo, (void *) (&myNum), stackPtr);
-  sleep(500);
+  //sleep(500)
+  int joinRet = join(rc);
   printf(1, "Should succeed (be >0):\t%d\n", rc);
+  printf(1, "Should succeed (be >0):\t%d\n", joinRet);
   printf(1, "ENDING CLONE TEST WITH rc=%d\n", rc);
   free(stackPtr);
   exit();

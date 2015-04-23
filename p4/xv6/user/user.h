@@ -26,6 +26,7 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int clone(void (* fnc) (void *), void * arg, void * stack);
+int join(int pid);
 
 // user library functions (ulib.c)
 int stat(char*, struct stat*);
