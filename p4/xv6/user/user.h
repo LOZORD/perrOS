@@ -53,10 +53,15 @@ typedef struct _lock_ {
 void lock_init(lock_t * lock);
 void lock_acquire(lock_t * lock);
 void lock_release(lock_t * lock);
+inline int FetchAndAdd(int * varPtr);
 //CV LIBRARY
 //CV struct TODO
+#define CVAR_QUEUE_SIZE 64
 typedef struct _cvar_ {
-  int TODO;
+  int headPosition;             //the head position of our circular array
+  int queue [CVAR_QUEUE_SIZE];  //the circular array
+  int size;                     //the number of live threads in our queue
+  lock_t * lock; //TODO: do we want this?
 } cond_t;
 void cv_init(cond_t * cvar);
 void cv_wait(cond_t * cvar, lock_t * lock);

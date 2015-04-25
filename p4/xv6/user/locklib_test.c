@@ -14,6 +14,12 @@ void * DO_LOCK     = (void *)0x0b0;
 int main(int argc, char ** argv) {
   printf(1, "You've entered the lock test program!\n");
 
+  printf(1, "First, let's test our FetchAndAdd function!\n");
+  int testVar = 123;
+  //printf(1, "testVar BEFORE:\t%d\tAFTER:\t%d\n", testVar, FetchAndAdd(&testVar));
+  printf(1, "testVar BEFORE:\t%d\n", testVar);
+  printf(1, "testVar AFTER :\t%d\n", FetchAndAdd(&testVar));
+
   int tidA1, tidA2, tidB1, tidB2;
   globalA = globalB = 0;
   lock_init(&lock);

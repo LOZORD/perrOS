@@ -6,8 +6,6 @@
 #include "user.h"
 #include "fcntl.h"
 
-inline int FetchAndAdd(int * varPtr);
-
 void lock_init(lock_t * lock) {
   lock->ticket = 0;
   lock->turn   = 0;
@@ -17,7 +15,7 @@ void lock_acquire(lock_t * lock) {
   int myTurn;
 
   myTurn = FetchAndAdd(&lock->ticket);
-
+  //TODO do we need to put anything to sleep here?
   while (lock->turn != myTurn) {
     //spin
   }
@@ -34,5 +32,5 @@ inline int FetchAndAdd(int * varPtr) {
                  :"=a" (val)              //output
                  :"a"  (1), "m" (*varPtr) //input
                  :"memory"  );
-  return val;
+  return *varPtr;
 }
