@@ -53,6 +53,14 @@ typedef struct _lock_ {
 void lock_init(lock_t * lock);
 void lock_acquire(lock_t * lock);
 void lock_release(lock_t * lock);
+//CV LIBRARY
+//CV struct TODO
+typedef struct _cvar_ {
+  int TODO;
+} cond_t;
+void cv_init(cond_t * cvar);
+void cv_wait(cond_t * cvar, lock_t * lock);
+void cv_signal(cond_t * cvar);
 
 #endif // _USER_H_
 
