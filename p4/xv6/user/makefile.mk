@@ -28,6 +28,7 @@ USER_LIBS := \
 	usys.o\
 	printf.o\
 	threadlib.o\
+	locklib.o\
 	umalloc.o
 
 USER_LIBS := $(addprefix user/, $(USER_LIBS))

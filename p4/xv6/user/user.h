@@ -44,6 +44,15 @@ int atoi(const char*);
 //THREAD LIBRARY
 int thread_create(void (*start_routine)(void *), void * arg);
 int thread_join(int pid);
+//LOCK LIBRARY
+//Taken from OSTEP CH 28, PG 13
+typedef struct _lock_ {
+  int ticket;
+  int turn;
+} lock_t;
+void lock_init(lock_t * lock);
+void lock_acquire(lock_t * lock);
+void lock_release(lock_t * lock);
 
 #endif // _USER_H_
 
