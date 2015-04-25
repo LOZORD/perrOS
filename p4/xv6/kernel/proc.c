@@ -202,6 +202,7 @@ exit(void)
       kill(p->pid);
       proc_join(p->pid);
       acquire(&ptable.lock);
+      //XXX might need to force children into zombie state
       /*
        * we need to account for the case that when a parent exits,
        * it needs to kill its children

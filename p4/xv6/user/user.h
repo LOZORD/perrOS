@@ -41,6 +41,9 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
+//THREAD LIBRARY
+int thread_create(void (*start_routine)(void *), void * arg);
+int thread_join(int pid);
 
 #endif // _USER_H_
 
