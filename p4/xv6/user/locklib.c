@@ -6,21 +6,33 @@
 #include "user.h"
 #include "fcntl.h"
 
+inline int FetchAndAdd(int * varPtr);
+
 void lock_init(lock_t * lock) {
   lock->ticket = 0;
   lock->turn   = 0;
 }
 
 void lock_acquire(lock_t * lock) {
-  int myturn = -1;
+  int myTurn;
 
-  //myTurn = FetchAndAdd(&lock->ticket); //TODO look up howto/asm code online
+  myTurn = FetchAndAdd(&lock->ticket);
 
-  while (lock->turn != myturn) {
+  while (lock->turn != myTurn) {
     //spin
   }
 }
 
 void lock_release(lock_t * lock) {
-  //FetchAndAdd(&lock->turn); TODO
+  FetchAndAdd(&lock->turn);
+}
+
+inline int FetchAndAdd(int * varPtr) {
+  int val;
+
+  asm volatile (  "lock; xaddl %%eax, %2;"
+                 :"=a" (val)              //output
+                 :"a"  (1), "m" (*varPtr) //input
+                 :"memory"  );
+  return val;
 }
