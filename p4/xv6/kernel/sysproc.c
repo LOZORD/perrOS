@@ -126,12 +126,3 @@ int sys_wake (void) {
   cprintf("entered sys_wake!\n");
   return -1;
 }
-
-int sys_getThreadStack (void) {
-  int pid;
-
-  if(argint(0, &pid) < 0)
-    return NULL;
-
-  return (int)proc_getThreadStack(pid);
-}

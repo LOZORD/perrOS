@@ -17,10 +17,6 @@ struct pidMemPair {
 struct pidMemPair pidMemTable [PID_MEM_TABLE_SIZE] = { { 1, -1, 0 } };
 
 int thread_create(void (*start_routine) (void*), void * arg) {
-  //sanity check
-  if (!arg) {
-    return -1;
-  }
 
   void * stackPage = malloc(PGSIZE * 2);//(PGSIZE);
   void * alignedStack = (void *)((uint)stackPage + (PGSIZE - (uint)stackPage % PGSIZE));
@@ -45,7 +41,7 @@ int thread_create(void (*start_routine) (void*), void * arg) {
 }
 
 int thread_join(int pid) {
-  void * stackPtr; //= (void *) getThreadStack(pid);
+  void * stackPtr;
   int joinRet = join(pid);
   if(joinRet != -1){
     int i;

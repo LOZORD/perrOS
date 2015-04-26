@@ -17,8 +17,8 @@ USER_PROGS := \
 	zombie\
 	cond\
 	cond2\
-	cond3\
-	join\
+	cond3
+	#join\
 	join2\
 	join3\
 	join4\

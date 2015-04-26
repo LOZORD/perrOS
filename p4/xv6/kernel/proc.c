@@ -580,15 +580,3 @@ int proc_join (int pid) {
     sleep(proc, &ptable.lock);  //DOC: wait-sleep
   }
 }
-
-int proc_getThreadStack (int pid) {
-  struct proc * p;
-
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-    if (p->pid == pid && p->isThread) {
-      return (int)p->allocatedStack;
-    }
-  }
-
-  return 0;
-}
