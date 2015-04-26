@@ -117,6 +117,16 @@ growproc(int n)
       return -1;
   }
   proc->sz = sz;
+
+  struct proc *p;
+  acquire(&ptable.lock);
+  // Scan through table looking for thread children to update sz.
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->parent != proc || !p->isThread)
+      continue;
+    p->sz = sz;
+  }
+  release(&ptable.lock);
   switchuvm(proc);
   return 0;
 }
