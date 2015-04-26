@@ -1,25 +1,7 @@
 
 # user programs
 USER_PROGS := \
-	cat\
-	echo\
-	forktest\
-	grep\
 	init\
-	kill\
-	ln\
-	ls\
-	mkdir\
-	rm\
-	sh\
-	stressfs\
-	tester\
-	usertests\
-	wc\
-	zombie
-
-	#test verision
-	#init\
 	kill\
 	sh\
 	usertests\
@@ -47,6 +29,25 @@ USER_PROGS := \
 	stackfree\
 	thread\
 	thread1
+
+	#cat\
+	echo\
+	forktest\
+	grep\
+	init\
+	kill\
+	ln\
+	ls\
+	mkdir\
+	rm\
+	sh\
+	stressfs\
+	tester\
+	usertests\
+	wc\
+	zombie
+
+	#test verision
 
 USER_PROGS := $(addprefix user/, $(USER_PROGS))
 

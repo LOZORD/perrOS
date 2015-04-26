@@ -535,6 +535,7 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   *(uint *)(stackPtr) = (uint)arg;
   stackPtr -= 4;
   *(uint *)(stackPtr) = (uint)(0xffffffff);
+  np->tf->esp = (uint)stackPtr;
 
   return pid;
 }
