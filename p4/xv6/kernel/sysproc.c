@@ -121,3 +121,8 @@ int sys_join (void) {
   cprintf("Got jR as %d\n", joinRet);
   return joinRet;
 }
+
+int sys_wake (void) {
+  cprintf("entered sys_wake!\n");
+  return -1;
+}

@@ -20,9 +20,9 @@ void cv_wait(cond_t * cvar, lock_t * lock) {
 
   int position = (cvar->headPosition + cvar->size) % CVAR_QUEUE_SIZE;
 
-  if (cvar->size != 0) {
-    cvar->queue[position] = getpid();
-  }
+  //if (cvar->size != 0) {
+  cvar->queue[position] = getpid();
+  //}
 
   cvar->size++;
 
@@ -36,8 +36,11 @@ void cv_signal(cond_t * cvar) {
     printf(1, "ERROR: condition variable queue empty!\n");
     return;
   }
+
   cvar->queue[cvar->headPosition] = -1; //clear this current pid
+
   cvar->headPosition = (cvar->headPosition + 1) % CVAR_QUEUE_SIZE;
+
   cvar->size--;
   //TODO call wake thread on the new pid (do it in the right order!)
   //wakeup(cvar->queue[cvar->headPosition]);
