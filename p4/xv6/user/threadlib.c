@@ -50,6 +50,7 @@ int thread_join(int pid) {
         continue;
       if(pidMemTable[i].pid == joinRet){
         stackPtr = pidMemTable[i].memRegion;
+        free(stackPtr);
         pidMemTable[i].isFree = 1;
         pidMemTable[i].memRegion = 0;
         pidMemTable[i].pid = -1;
@@ -57,7 +58,6 @@ int thread_join(int pid) {
       }
     }
   }
-  free(stackPtr);
 
   return joinRet > 0 ? joinRet : -1;
 }

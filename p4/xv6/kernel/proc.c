@@ -122,9 +122,14 @@ growproc(int n)
   acquire(&ptable.lock);
   // Scan through table looking for thread children to update sz.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->parent != proc || !p->isThread)
-      continue;
-    p->sz = sz;
+    if(p->parent == proc && p->isThread){
+      p->sz = sz;
+    }else if(p == proc->parent && proc->isThread){
+      p->sz = sz;
+    }else if(p->isThread && p->parent == proc->parent){
+      p->sz = sz;
+    }
+    
   }
   release(&ptable.lock);
   switchuvm(proc);
@@ -204,7 +209,7 @@ exit(void)
       }
     }
     if (p->isThread && p->parent == proc) {
-      cprintf("***********GETTING HERE***********");
+      //cprintf("***********GETTING HERE***********");
       release(&ptable.lock); //FIXME!!!!!!!!!!!!
       kill(p->pid);
       proc_join(p->pid);
@@ -225,7 +230,7 @@ exit(void)
   //while(wait() != -1) { }
   //release(&ptable.lock);
 
-  // Jump into the scheduler, never to return.
+  // Jmp into the scheduler, never to return.
   proc->state = ZOMBIE;
   sched();
   panic("zombie exit");
@@ -497,6 +502,7 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   //need to make sure that threads can't new threads' parent
   //only original proc can be the parent
   if (proc->isThread) {
+    cprintf("here\n");
     np->parent = proc->parent;
   }
   else {
@@ -525,12 +531,10 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   np->allocatedStack = stack;
 
   void * stackPtr = stack + PGSIZE;
-  stackPtr -= sizeof(void *);
-  *(uint *)(stackPtr) = (uint)(0xffffffff);
-  stackPtr -= sizeof(void *);
+  stackPtr -= 4;
   *(uint *)(stackPtr) = (uint)arg;
-  stackPtr -= sizeof(void *);
-  (np->tf->esp) = (uint) stackPtr;
+  stackPtr -= 4;
+  *(uint *)(stackPtr) = (uint)(0xffffffff);
 
   return pid;
 }
@@ -563,7 +567,7 @@ int proc_join (int pid) {
         p->name[0] = 0;
         p->killed = 0;
         release(&ptable.lock);
-        cprintf("Proc with pid: %d returning due to one of my children is dead\n", proc->pid);
+        //cprintf("Proc with pid: %d returning due to one of my children is dead\n", proc->pid);
         return pid;
       }
     }
@@ -576,7 +580,7 @@ int proc_join (int pid) {
     }
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-    cprintf("\n***PID: %d falling asleep***\n", proc->pid);
+    //cprintf("\n***PID: %d falling asleep***\n", proc->pid);
     sleep(proc, &ptable.lock);  //DOC: wait-sleep
   }
 }

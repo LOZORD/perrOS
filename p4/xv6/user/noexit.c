@@ -44,6 +44,7 @@ worker(void *arg_ptr) {
    assert(arg == 42);
    assert(global == 1);
    global++;
+   printf(1, "Ending Thread without exit()\n");
    // no exit() in thread
 }
 

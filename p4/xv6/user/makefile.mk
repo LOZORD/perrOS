@@ -4,17 +4,29 @@ USER_PROGS := \
 	cat\
 	echo\
 	forktest\
+	grep\
 	init\
 	kill\
+	ln\
 	ls\
+	mkdir\
 	rm\
 	sh\
+	stressfs\
 	tester\
 	usertests\
-	clone_test\
-	threadlib_test\
-	locklib_test\
-	zombie\
+	wc\
+	zombie
+
+	#test verision
+	#init\
+	kill\
+	sh\
+	usertests\
+	badclone\
+	clone\
+	clone2\
+	clone3\
 	cond\
 	cond2\
 	cond3
@@ -22,23 +34,19 @@ USER_PROGS := \
 	join2\
 	join3\
 	join4\
-	noexit\
+	lockorder\
+	locks\
 	multi\
 	multisbrk\
+	noexit\
 	parentexit\
 	race\
+	sbrkclone\
 	size\
 	stack\
-	stackfree
-	#thread\
-	lockorder\
-	locks
-	#clone3\
-	#grep\
-	#wc\
-	#mkdir\
-	#ln\
-	#stressfs\
+	stackfree\
+	thread\
+	thread1
 
 USER_PROGS := $(addprefix user/, $(USER_PROGS))
 
