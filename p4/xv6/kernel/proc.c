@@ -14,7 +14,6 @@ struct {
 static struct proc *initproc;
 
 int nextpid = 1;
-int lastJoinedWasThread = 0;
 extern void forkret(void);
 extern void trapret(void);
 
@@ -118,6 +117,16 @@ growproc(int n)
       return -1;
   }
   proc->sz = sz;
+
+  struct proc *p;
+  acquire(&ptable.lock);
+  // Scan through table looking for thread children to update sz.
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->parent != proc || !p->isThread)
+      continue;
+    p->sz = sz;
+  }
+  release(&ptable.lock);
   switchuvm(proc);
   return 0;
 }
@@ -209,6 +218,8 @@ exit(void)
        */
     }
   }
+  // Parent might be sleeping in wait().
+  wakeup1(proc->parent);
   //while(wait() != -1) { }
   //release(&ptable.lock);
 
@@ -231,7 +242,7 @@ wait(void)
     // Scan through table looking for zombie children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent != proc)
+      if(p->parent != proc || p->isThread)
         continue;
       havekids = 1;
       //cprintf("Waiting for child with pid: %d to finish.\n", p->pid);
@@ -240,13 +251,7 @@ wait(void)
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
-        if(!p->isThread){
-          lastJoinedWasThread = 0;
-          freevm(p->pgdir);
-        }
-        else {
-          lastJoinedWasThread = 1;
-        }
+        freevm(p->pgdir);
         p->state = UNUSED;
         p->pid = 0;
         p->parent = 0;
@@ -528,60 +533,45 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
 }
 
 int proc_join (int pid) {
-  struct proc * joinee = NULL, * p;
-  //sanity check
-  if(proc->pid == pid) {
-    return -1; //why would you want to join yourself?
-  }
-  else if (pid <= -2) {
-    return -1;
-  }
+  struct proc *p;
+  int havekids;
 
-  cprintf("In proc_join, about to walk table...\n");
-
-  //iterate through proc table
-  if (pid > 0) {
-    acquire(&ptable.lock);
+  acquire(&ptable.lock);
+  for(;;){
+    // Scan through table looking for zombie thread children.
+    havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state == UNUSED)
+      if((p->parent != proc && !(proc->isThread && p->parent == proc->parent))|| !p->isThread || (p->pid != pid && pid != -1))
         continue;
-      if(p->pid == pid) {
-        joinee = p;
-        break;
+      havekids = 1;
+      //cprintf("Waiting for child with pid: %d to finish.\n", p->pid);
+      if(p->state == ZOMBIE){
+        // Found one.
+        pid = p->pid;
+        kfree(p->kstack);
+        p->kstack = 0;
+        p->state = UNUSED;
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        release(&ptable.lock);
+        //cprintf("returning due to one of my children is dead\n");
+        return pid;
       }
     }
-    release(&ptable.lock);
-  }
 
-  if (pid != -1) {
-    if (!joinee || !(joinee->isThread)) {
+    // No point waiting if we don't have any children.
+    if(!havekids || proc->killed){
+      release(&ptable.lock);
+      //cprintf("returning due to no kids or I'm dead\n");
       return -1;
     }
 
-    //return if it's already completed
-    if (joinee->killed) {
-      return pid;
-    }
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    //cprintf("\n***falling asleep***\n");
+    sleep(proc, &ptable.lock);  //DOC: wait-sleep
   }
-
-  int waitRet = 0;
-
-  cprintf("In proc_join, about to call `wait`\n");
-
-  while (1) {
-    waitRet = wait();
-    cprintf("got waitRet as:\t%d\n", waitRet);
-    if (lastJoinedWasThread && pid == -1) {
-      return waitRet;
-    }
-    if (waitRet == pid || waitRet <= 0) {
-      cprintf("Breaking while loop!\n");
-      break;
-    }
-  }
-
-  cprintf("Returning from join\n");
-  return waitRet;
 }
 
 int proc_getThreadStack (int pid) {
