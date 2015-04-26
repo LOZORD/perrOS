@@ -14,7 +14,7 @@ void lock_init(lock_t * lock) {
 void lock_acquire(lock_t * lock) {
   int myTurn;
 
-  myTurn = FetchAndAdd(&lock->ticket);
+  myTurn = FetchAndAdd(&lock->ticket, 1);
   //TODO do we need to put anything to sleep here?
   while (lock->turn != myTurn) {
     //spin
@@ -22,15 +22,15 @@ void lock_acquire(lock_t * lock) {
 }
 
 void lock_release(lock_t * lock) {
-  FetchAndAdd(&lock->turn);
+  FetchAndAdd(&lock->turn, 1);
 }
 
-inline int FetchAndAdd(int * varPtr) {
-  int val;
+//using Wikipedia's example of fetch_and_add
+inline int FetchAndAdd(int * varPtr, int incr) {
 
   asm volatile (  "lock; xaddl %%eax, %2;"
-                 :"=a" (val)              //output
-                 :"a"  (1), "m" (*varPtr) //input
+                 :"=a" (incr)              //output
+                 :"a"  (incr), "m" (*varPtr) //input
                  :"memory"  );
-  return *varPtr;
+  return incr;
 }

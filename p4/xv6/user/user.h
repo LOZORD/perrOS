@@ -53,7 +53,7 @@ typedef struct _lock_ {
 void lock_init(lock_t * lock);
 void lock_acquire(lock_t * lock);
 void lock_release(lock_t * lock);
-inline int FetchAndAdd(int * varPtr);
+inline int FetchAndAdd(int * varPtr, int incr);
 //CV LIBRARY
 //CV struct TODO
 #define CVAR_QUEUE_SIZE 64
