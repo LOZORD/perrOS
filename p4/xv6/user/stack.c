@@ -29,6 +29,8 @@ main(int argc, char *argv[])
    if((uint)stack % PGSIZE)
      stack = stack + (4096 - (uint)stack % PGSIZE);
 
+   printf(1, "stack val: %d\n", *((uint*) stack));
+   printf(1, "stack: %d\n", (uint*) stack);
    int clone_pid = clone(worker, stack, stack);
    assert(clone_pid > 0);
    while(global != 5);
