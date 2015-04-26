@@ -37,6 +37,7 @@ main(int argc, char *argv[])
    assert((uint)stack % PGSIZE == 0);
    assert((uint)sbrk(0) - (uint)stack == PGSIZE/2);
 
+   printf(1, "Passing stack as: %p\n", stack);
    assert(clone(worker, 0, stack) == -1);
 
    printf(1, "TEST PASSED\n");

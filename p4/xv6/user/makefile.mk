@@ -15,11 +15,12 @@ USER_PROGS := \
 	threadlib_test\
 	locklib_test\
 	zombie\
-	clone\
-	clone3\
 	cond\
 	cond2\
 	cond3\
+	join\
+	join2\
+	join3\
 	join4\
 	noexit\
 	multi\
@@ -28,10 +29,11 @@ USER_PROGS := \
 	race\
 	size\
 	stack\
-	stackfree\
-	thread\
+	stackfree
+	#thread\
 	lockorder\
 	locks
+	#clone3\
 	#grep\
 	#wc\
 	#mkdir\

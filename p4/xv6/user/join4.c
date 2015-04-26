@@ -39,7 +39,6 @@ main(int argc, char *argv[])
    assert(thread_pid > 0);
 
    sleep(100);
-
    for(i = 0; i < arg + 1; i++)
    {
    	int join_pid = thread_join(-1);

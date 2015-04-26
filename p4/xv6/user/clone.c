@@ -30,6 +30,7 @@ main(int argc, char *argv[])
      stack = stack + (4096 - (uint)stack % PGSIZE);
 
    int clone_pid = clone(worker, 0, stack);
+   printf(1, "got pid:%d\n", clone_pid);
    assert(clone_pid > 0);
    while(global != 5);
    printf(1, "TEST PASSED\n");

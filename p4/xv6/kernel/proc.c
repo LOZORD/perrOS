@@ -195,9 +195,6 @@ exit(void)
 
   acquire(&ptable.lock);
 
-  // Parent might be sleeping in wait().
-  wakeup1(proc->parent);
-
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == proc && !p->isThread){
@@ -207,6 +204,7 @@ exit(void)
       }
     }
     if (p->isThread && p->parent == proc) {
+      cprintf("***********GETTING HERE***********");
       release(&ptable.lock); //FIXME!!!!!!!!!!!!
       kill(p->pid);
       proc_join(p->pid);
@@ -216,6 +214,10 @@ exit(void)
        * we need to account for the case that when a parent exits,
        * it needs to kill its children
        */
+    }
+    if (p->isThread && p->parent == proc->parent) {
+      // sibling threads might be sleeping in wait().
+      wakeup1(p);
     }
   }
   // Parent might be sleeping in wait().
@@ -402,8 +404,9 @@ wakeup1(void *chan)
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+    if(p->state == SLEEPING && p->chan == chan){
       p->state = RUNNABLE;
+    }
 }
 
 // Wake up all processes sleeping on chan.
@@ -483,7 +486,7 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   int i, pid;
   struct proc *np;
   //first check that the stack is not null
-  if (!arg || !stack) {
+  if (!stack || (uint)stack % PGSIZE != 0 || (uint)proc->sz - (uint)stack < PGSIZE) {
     return -1;
   }
 
@@ -541,7 +544,11 @@ int proc_join (int pid) {
     // Scan through table looking for zombie thread children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if((p->parent != proc && !(proc->isThread && p->parent == proc->parent))|| !p->isThread || (p->pid != pid && pid != -1))
+      if(!p->isThread)
+        continue;
+      if((p->parent != proc) && (p->parent != proc->parent))
+        continue;
+      if((p->pid != pid && pid != -1))
         continue;
       havekids = 1;
       //cprintf("Waiting for child with pid: %d to finish.\n", p->pid);
@@ -556,7 +563,7 @@ int proc_join (int pid) {
         p->name[0] = 0;
         p->killed = 0;
         release(&ptable.lock);
-        //cprintf("returning due to one of my children is dead\n");
+        cprintf("Proc with pid: %d returning due to one of my children is dead\n", proc->pid);
         return pid;
       }
     }
@@ -569,7 +576,7 @@ int proc_join (int pid) {
     }
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-    //cprintf("\n***falling asleep***\n");
+    cprintf("\n***PID: %d falling asleep***\n", proc->pid);
     sleep(proc, &ptable.lock);  //DOC: wait-sleep
   }
 }
