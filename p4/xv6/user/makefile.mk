@@ -17,6 +17,8 @@ USER_PROGS := \
 	usertests\
 	wc\
 	clone_test\
+	threadlib_test\
+	locklib_test\
 	zombie
 
 USER_PROGS := $(addprefix user/, $(USER_PROGS))
@@ -26,6 +28,9 @@ USER_LIBS := \
 	ulib.o\
 	usys.o\
 	printf.o\
+	threadlib.o\
+	locklib.o\
+	cvarlib.o\
 	umalloc.o
 
 USER_LIBS := $(addprefix user/, $(USER_LIBS))

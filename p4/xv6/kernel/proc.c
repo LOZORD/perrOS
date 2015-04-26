@@ -201,6 +201,7 @@ exit(void)
       kill(p->pid);
       proc_join(p->pid);
       acquire(&ptable.lock);
+      //XXX might need to force children into zombie state
       /*
        * we need to account for the case that when a parent exits,
        * it needs to kill its children
@@ -508,6 +509,8 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
 
+  np->allocatedStack = stack;
+
   void * stackPtr = stack + PGSIZE;
   stackPtr -= sizeof(void *);
   *(uint *)(stackPtr) = (uint)(0xffffffff);
@@ -559,4 +562,16 @@ int proc_join (int pid) {
     //cprintf("\n***falling asleep***\n");
     sleep(proc, &ptable.lock);  //DOC: wait-sleep
   }
+}
+
+int proc_getThreadStack (int pid) {
+  struct proc * p;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if (p->pid == pid && p->isThread) {
+      return (int)p->allocatedStack;
+    }
+  }
+
+  return 0;
 }
