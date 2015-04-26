@@ -31,6 +31,7 @@ extern int ncpu;
 //Function decls
 int proc_clone(void (* fnc) (void *), void * arg, void * stack);
 int proc_join(int pid);
+int proc_getThreadStack(int pid);
 
 // Per-CPU variables, holding pointers to the
 // current cpu and to the current process.
@@ -79,6 +80,7 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   short isThread;                // Whether or not this process is a thread
+  void * allocatedStack;
 };
 
 // Process memory is laid out contiguously, low addresses first:

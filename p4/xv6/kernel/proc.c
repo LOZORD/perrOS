@@ -514,6 +514,8 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
 
+  np->allocatedStack = stack;
+
   void * stackPtr = stack + PGSIZE;
   stackPtr -= sizeof(void *);
   *(uint *)(stackPtr) = (uint)(0xffffffff);
@@ -580,4 +582,16 @@ int proc_join (int pid) {
 
   cprintf("Returning from join\n");
   return waitRet;
+}
+
+int proc_getThreadStack (int pid) {
+  struct proc * p;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if (p->pid == pid && p->isThread) {
+      return (int)p->allocatedStack;
+    }
+  }
+
+  return 0;
 }

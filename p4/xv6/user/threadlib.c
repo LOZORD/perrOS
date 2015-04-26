@@ -22,7 +22,8 @@ int thread_create(void (*start_routine) (void*), void * arg) {
 }
 
 int thread_join(int pid) {
-  //TODO free malloc'd memory!!!
+  void * stackPtr = (void *) getThreadStack(pid);
+  free(stackPtr);
   int joinRet = join(pid);
 
   return joinRet > 0 ? joinRet : -1;

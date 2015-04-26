@@ -25,5 +25,6 @@ int sys_write(void);
 int sys_uptime(void);
 int sys_clone(void);
 int sys_join(void);
+int sys_getThreadStack(void);
 
 #endif // _SYSFUNC_H_
