@@ -27,9 +27,10 @@ int main(int argc, char *argv[])
   myNum /= 2; //change my num for lels
   //myNum = 200;
   rc = clone(foo, (void *) (&myNum), stackPtr);
-  joinRet = join(-1); //uncomment and fix this case (parent ends before child TODO)
+  //joinRet = join(-1); //uncomment and fix this case (parent ends before child TODO)
   printf(1, "ENDING CLONE TEST WITH rc=%d\n", rc);
   free(stackPtr);
+  sleep(200); //wait 2 seconds
   exit();
 }
 
@@ -41,7 +42,7 @@ void foo (void * arg) {
     printf(1, "Count is\t%d\n", n--);
   }
   printf(1, "child is going to sleep...\n");
-  sleep(200); //wait 2 seconds
+  sleep(1000); //wait 2 seconds
   printf(1, "child foo exiting!\n");
   exit();
 }
