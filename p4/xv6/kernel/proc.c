@@ -157,9 +157,14 @@ fork(void)
     return -1;
   }
   np->sz = proc->sz;
-  np->parent = proc;
+  if (proc->isThread) {
+    np->parent = proc->parent;
+  }
+  else {
+    np->parent = proc;
+  }
   *np->tf = *proc->tf;
-  np->isThread = 0; //TODO case that child thread forks a new (main) process
+  np->isThread = 0; //a fork (new proc) is not a thread!
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -209,7 +214,6 @@ exit(void)
       }
     }
     if (p->isThread && p->parent == proc) {
-      //cprintf("***********GETTING HERE***********");
       release(&ptable.lock); //FIXME!!!!!!!!!!!!
       kill(p->pid);
       proc_join(p->pid);
@@ -494,15 +498,14 @@ procdump(void)
   }
 }
 
-//TODO
 int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   //cprintf("entered proc_clone!\n");
   //cprintf("GOT ARGUMENTS:\n\tFNC:%p\n\tARG:%p\n\tSTK:%p\n", fnc, arg, stack);
 
-  //TODO test that stack is page aligned
   int i, pid;
   struct proc *np;
-  //first check that the stack is not null
+  //first check that the stack is not null and that it is page aligned and does
+  //not run over ACTUAl stack space
   if (!stack || (uint)stack % PGSIZE != 0 || (uint)proc->sz - (uint)stack < PGSIZE) {
     return -1;
   }
@@ -520,7 +523,7 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
     np->parent = proc;
   }
 
-  np->sz = proc->sz; //maybe??? XXX
+  np->sz = proc->sz;
   *np->tf = *proc->tf;
   np->tf->eip = (uint) fnc;
   np->pgdir = proc->pgdir;
@@ -536,7 +539,6 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   np->cwd = idup(proc->cwd);
 
   pid = np->pid;
-  np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
 
   np->allocatedStack = stack;
@@ -547,6 +549,20 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   stackPtr -= 4;
   *(uint *)(stackPtr) = (uint)(0xffffffff);
   np->tf->esp = (uint)stackPtr;
+
+  /*
+  //uint * stackBottom = stack + PGSIZE;
+  uint *stackBottom, sp;
+  sp = (uint) stack + PGSIZE;
+  stackBottom = (uint *)sp;
+  stackBottom[0] = 0xffffffff;
+  stackBottom[1] = (uint)arg;
+  sp -= 8;
+  //stackBottom = stackBottom - (2 * sizeof(void *));
+  np->tf->esp = (uint)sp; // stackBottom;
+  */
+
+  np->state = RUNNABLE;
 
   return pid;
 }

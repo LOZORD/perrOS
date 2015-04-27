@@ -35,6 +35,9 @@ main(int argc, char *argv[])
    for(i = 0; i < arg; i++)
    {
    	int thread_pid = thread_create(worker, (void *)arg);
+    if (thread_pid <= 0) {
+      printf(1, "CREATER GOT BAD PID OF %d\n", thread_pid);
+    }
 	assert(thread_pid > 0);
    }
 
@@ -43,6 +46,9 @@ main(int argc, char *argv[])
    for(i = 0; i < num_threads + 1; i++)
    {
    	int join_pid = thread_join(-1);
+    if (thread_pid <= 0) {
+      printf(1, "JOINER GOT BAD PID OF %d\n", thread_pid);
+    }
    	assert(join_pid > 0);
    }
 
@@ -58,6 +64,9 @@ worker_brahma(void *arg_ptr) {
    for(i = 0; i < arg; i++)
    {
    	int thread_pid = thread_create(worker, &arg);
+    if (thread_pid <= 0) {
+      printf(1, "BRAHMA GOT BAD PID OF %d\n", thread_pid);
+    }
    	assert(thread_pid > 0);
    }
 

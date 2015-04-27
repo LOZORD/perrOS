@@ -30,6 +30,8 @@ main(int argc, char *argv[])
    if((uint)stack % PGSIZE)
      stack = stack + (4096 - (uint)stack % PGSIZE);
 
+
+  printf(1, "stack top:\t%x\tbottom:\t%x\n", stack, stack + PGSIZE);
    int clone_pid = clone(worker, (void*)&arg, stack);
    assert(clone_pid > 0);
    while(global != 55);
@@ -40,6 +42,13 @@ main(int argc, char *argv[])
 
 void
 worker(void *arg_ptr) {
+  /*
+  printf(1,"vp %d cp %d\n", sizeof(void *), sizeof(char *));
+  printf(1, "arg_ptr %x\n", &arg_ptr);
+  void * stackBottom = &arg_ptr + 2*sizeof(void *);
+  printf(1, "stackBottom %x\n", (uint)stackBottom);
+  assert((uint)stackBottom % PGSIZE == 0);
+  */
    int tmp = *(int*)arg_ptr;
    *(int*)arg_ptr = 1;
    assert(global == 1);
