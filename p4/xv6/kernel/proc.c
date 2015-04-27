@@ -106,6 +106,7 @@ userinit(void)
 int
 growproc(int n)
 {
+  acquire(&ptable.lock);
   uint sz;
 
   sz = proc->sz;
@@ -119,7 +120,6 @@ growproc(int n)
   proc->sz = sz;
 
   struct proc *p;
-  acquire(&ptable.lock);
   // Scan through table looking for thread children to update sz.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == proc && p->isThread){
