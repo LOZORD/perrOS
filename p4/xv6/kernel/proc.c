@@ -423,6 +423,18 @@ wakeup(void *chan)
   release(&ptable.lock);
 }
 
+void proc_wakeup(int pid) {
+  acquire(&ptable.lock);
+  struct proc *p;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if(p->state == SLEEPING && p->pid == pid){
+      p->state = RUNNABLE;
+    }
+  }
+  release(&ptable.lock);
+}
+
 // Kill the process with the given pid.
 // Process won't exit until it returns
 // to user space (see trap in trap.c).
@@ -584,4 +596,46 @@ int proc_join (int pid) {
     //cprintf("\n***PID: %d falling asleep***\n", proc->pid);
     sleep(proc, &ptable.lock);  //DOC: wait-sleep
   }
+}
+
+void ticket_sleep (int pid, char * lock) {
+  struct proc * p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if(p->pid == pid){
+      lock_release((lock_t *)lock);
+      p->state = SLEEPING;
+      break;
+    }
+  }
+  release(&ptable.lock);
+}
+
+void lock_init(lock_t * lock) {
+  lock->ticket = 0;
+  lock->turn   = 0;
+}
+
+void lock_acquire(lock_t * lock) {
+  int myTurn;
+
+  myTurn = FetchAndAdd(&lock->ticket, 1);
+  //TODO do we need to put anything to sleep here?
+  while (lock->turn != myTurn) {
+    //spin
+  }
+}
+
+void lock_release(lock_t * lock) {
+  FetchAndAdd(&lock->turn, 1);
+}
+
+//using Wikipedia's example of fetch_and_add
+inline int FetchAndAdd(int * varPtr, int incr) {
+
+  asm volatile (  "lock; xaddl %%eax, %2;"
+                 :"=a" (incr)              //output
+                 :"a"  (incr), "m" (*varPtr) //input
+                 :"memory"  );
+  return incr;
 }

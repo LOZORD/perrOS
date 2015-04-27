@@ -1,6 +1,8 @@
 #ifndef _USER_H_
 #define _USER_H_
 
+#include "x86.h"
+
 struct stat;
 
 // system calls
@@ -27,6 +29,8 @@ int sleep(int);
 int uptime(void);
 int clone(void (* fnc) (void *), void * arg, void * stack);
 int join(int pid);
+int wake(int pid);
+int ticket_sleep(int pid, char * lock);
 
 // user library functions (ulib.c)
 int stat(char*, struct stat*);
@@ -44,28 +48,6 @@ int atoi(const char*);
 //THREAD LIBRARY
 int thread_create(void (*start_routine)(void *), void * arg);
 int thread_join(int pid);
-//LOCK LIBRARY
-//Taken from OSTEP CH 28, PG 13
-typedef struct _lock_ {
-  int ticket;
-  int turn;
-} lock_t;
-void lock_init(lock_t * lock);
-void lock_acquire(lock_t * lock);
-void lock_release(lock_t * lock);
-inline int FetchAndAdd(int * varPtr, int incr);
-//CV LIBRARY
-//CV struct TODO
-#define CVAR_QUEUE_SIZE 64
-typedef struct _cvar_ {
-  int headPosition;             //the head position of our circular array
-  int queue [CVAR_QUEUE_SIZE];  //the circular array
-  int size;                     //the number of live threads in our queue
-  lock_t * lock; //TODO: do we want this?
-} cond_t;
-void cv_init(cond_t * cvar);
-void cv_wait(cond_t * cvar, lock_t * lock);
-void cv_signal(cond_t * cvar);
 
 #endif // _USER_H_
 

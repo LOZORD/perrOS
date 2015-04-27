@@ -5,6 +5,7 @@
 #include "types.h"
 #include "user.h"
 #include "fcntl.h"
+#include "x86.h"
 
 void lock_init(lock_t * lock) {
   lock->ticket = 0;

@@ -14,6 +14,7 @@ struct pidMemPair {
 
 #define PID_MEM_TABLE_SIZE 64
 #define PGSIZE 4096
+//TODO add a lock!
 struct pidMemPair pidMemTable [PID_MEM_TABLE_SIZE] = { { 1, -1, 0 } };
 
 int thread_create(void (*start_routine) (void*), void * arg) {

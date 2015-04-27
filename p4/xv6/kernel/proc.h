@@ -31,6 +31,9 @@ extern int ncpu;
 //Function decls
 int proc_clone(void (* fnc) (void *), void * arg, void * stack);
 int proc_join(int pid);
+void proc_wakeup(int pid);
+//void ticket_sleep(int pid, lock_t * l);
+void ticket_sleep (int pid, char * lock);
 
 // Per-CPU variables, holding pointers to the
 // current cpu and to the current process.

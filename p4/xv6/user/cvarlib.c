@@ -4,45 +4,53 @@
 
 #include "types.h"
 #include "user.h"
+#include "x86.h"
 #include "fcntl.h"
 
 void cv_init(cond_t * cvar) {
-  cvar->headPosition  = 0;
-  cvar->size          = 0;
-  cvar->lock          = NULL;
+  cvar->head = 0;
+  cvar->tail = 0;
+  cvar->lock = NULL;
 }
 
 void cv_wait(cond_t * cvar, lock_t * lock) {
-  if (cvar->size >= CVAR_QUEUE_SIZE) {
+  if (cvar->tail >= CVAR_QUEUE_SIZE || (cvar->tail + 1 == cvar->head)) {
     printf(1, "ERROR: condition variable queue full!\n");
     return;
   }
 
-  int position = (cvar->headPosition + cvar->size) % CVAR_QUEUE_SIZE;
+  int currPid = getpid();
+  cvar->queue[cvar->tail] = currPid;
 
-  //if (cvar->size != 0) {
-  cvar->queue[position] = getpid();
-  //}
+  /*
+  if (cvar->head == cvar->tail) {
+    //no one else in the queue
+  }
+  else {
+    //you have to wait
+  }
+  */
 
-  cvar->size++;
+  cvar->tail = (cvar->tail + 1) % CVAR_QUEUE_SIZE;
 
-  cvar->lock = lock;
+  if (cvar->lock != NULL) {
+    cvar->lock = lock;
+  }
 
-  lock_acquire(lock); //get the lock, or wait on it
+  ticket_sleep(currPid, (char *) lock);
+  lock_acquire(lock);
 }
 
 void cv_signal(cond_t * cvar) {
-  if (cvar->size <= 0) {
+  if (cvar->head <= 0) {
     printf(1, "ERROR: condition variable queue empty!\n");
     return;
   }
 
-  cvar->queue[cvar->headPosition] = -1; //clear this current pid
+  int currPid = cvar->queue[cvar->head];
+  cvar->queue[cvar->head] = -1; //clear this current pid
 
-  cvar->headPosition = (cvar->headPosition + 1) % CVAR_QUEUE_SIZE;
-
-  cvar->size--;
-  //TODO call wake thread on the new pid (do it in the right order!)
-  //wakeup(cvar->queue[cvar->headPosition]);
+  cvar->head = (cvar->head + 1) % CVAR_QUEUE_SIZE;
+  wake(currPid); //wakeup the next pid
   lock_release(cvar->lock);
 }

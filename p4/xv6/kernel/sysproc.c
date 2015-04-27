@@ -123,6 +123,27 @@ int sys_join (void) {
 }
 
 int sys_wake (void) {
-  cprintf("entered sys_wake!\n");
-  return -1;
+  int pid;
+
+  if (argint(0, &pid) < 0)
+    return -1;
+
+  proc_wakeup(pid);
+
+  return 0;
+}
+
+int sys_ticket_sleep (void) {
+  int pid;
+  void * lock;
+
+  if(argint(0, &pid) < 0) {
+    return -1;
+  }
+  if(argptr(1, (char **) &lock, sizeof(void *)) < 0) {
+    return -1;
+  }
+
+  ticket_sleep(pid, lock);
+  return 0;
 }
