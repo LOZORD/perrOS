@@ -10,10 +10,13 @@
 void cv_init(cond_t * cvar) {
   cvar->head = 0;
   cvar->tail = 0;
-  cvar->lock = NULL;
+  cvar->init = 1;
 }
 
 void cv_wait(cond_t * cvar, lock_t * lock) {
+  if(!cvar->init){
+    cv_init(cvar);
+  }
   if (cvar->tail >= CVAR_QUEUE_SIZE || (cvar->tail + 1 == cvar->head)) {
     printf(1, "ERROR: condition variable queue full!\n");
     return;
@@ -22,28 +25,17 @@ void cv_wait(cond_t * cvar, lock_t * lock) {
   int currPid = getpid();
   cvar->queue[cvar->tail] = currPid;
 
-  /*
-  if (cvar->head == cvar->tail) {
-    //no one else in the queue
-  }
-  else {
-    //you have to wait
-  }
-  */
-
   cvar->tail = (cvar->tail + 1) % CVAR_QUEUE_SIZE;
-
-  if (cvar->lock != NULL) {
-    cvar->lock = lock;
-  }
 
   ticket_sleep(currPid, (char *) lock);
   lock_acquire(lock);
 }
 
 void cv_signal(cond_t * cvar) {
-  if (cvar->head <= 0) {
-    printf(1, "ERROR: condition variable queue empty!\n");
+  if(!cvar->init){
+    cv_init(cvar);
+  }
+  if (cvar->head == cvar->tail) {
     return;
   }
 
@@ -52,5 +44,4 @@ void cv_signal(cond_t * cvar) {
 
   cvar->head = (cvar->head + 1) % CVAR_QUEUE_SIZE;
   wake(currPid); //wakeup the next pid
-  lock_release(cvar->lock);
 }

@@ -229,8 +229,9 @@ inline int FetchAndAdd(int * varPtr, int incr);
 typedef struct _cvar_ {
   int head;                     //the head position of our circular array
   int tail;                     //the number of live threads in our queue
+  int init;
   int queue [CVAR_QUEUE_SIZE];  //the circular array
-  lock_t * lock; //TODO: do we want this?
+  //lock_t * lock; //TODO: do we want this?
 } cond_t;
 void cv_init(cond_t * cvar);
 void cv_wait(cond_t * cvar, lock_t * lock);

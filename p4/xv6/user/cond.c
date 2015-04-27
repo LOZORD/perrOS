@@ -29,7 +29,6 @@ main(int argc, char *argv[])
 
    lock_init(&lock);
 
-
    int thread_pid = thread_create(worker, 0);
    assert(thread_pid > 0);
 

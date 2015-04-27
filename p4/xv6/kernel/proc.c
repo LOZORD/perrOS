@@ -496,8 +496,8 @@ procdump(void)
 
 //TODO
 int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
-  cprintf("entered proc_clone!\n");
-  cprintf("GOT ARGUMENTS:\n\tFNC:%p\n\tARG:%p\n\tSTK:%p\n", fnc, arg, stack);
+  //cprintf("entered proc_clone!\n");
+  //cprintf("GOT ARGUMENTS:\n\tFNC:%p\n\tARG:%p\n\tSTK:%p\n", fnc, arg, stack);
 
   //TODO test that stack is page aligned
   int i, pid;
@@ -514,7 +514,6 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   //need to make sure that threads can't new threads' parent
   //only original proc can be the parent
   if (proc->isThread) {
-    cprintf("here\n");
     np->parent = proc->parent;
   }
   else {
@@ -605,6 +604,7 @@ void ticket_sleep (int pid, char * lock) {
     if(p->pid == pid){
       lock_release((lock_t *)lock);
       p->state = SLEEPING;
+      sched();
       break;
     }
   }
