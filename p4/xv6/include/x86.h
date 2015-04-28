@@ -212,5 +212,4 @@ struct trapframe {
   ushort padding6;
 };
 
-
 #endif // _X86_H_
