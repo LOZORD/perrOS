@@ -214,7 +214,7 @@ exit(void)
       }
     }
     if (p->isThread && p->parent == proc) {
-      release(&ptable.lock); //FIXME!!!!!!!!!!!!
+      release(&ptable.lock);
       kill(p->pid);
       proc_join(p->pid);
       acquire(&ptable.lock);
@@ -541,8 +541,6 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   pid = np->pid;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
 
-  np->allocatedStack = stack;
-
   void * stackPtr = stack + PGSIZE;
   stackPtr -= 4;
   *(uint *)(stackPtr) = (uint)arg;
@@ -550,7 +548,7 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   *(uint *)(stackPtr) = (uint)(0xffffffff);
   np->tf->esp = (uint)stackPtr;
 
-  /*
+  /* XXX
   //uint * stackBottom = stack + PGSIZE;
   uint *stackBottom, sp;
   sp = (uint) stack + PGSIZE;
@@ -583,7 +581,6 @@ int proc_join (int pid) {
       if((p->pid != pid && pid != -1))
         continue;
       havekids = 1;
-      //cprintf("Waiting for child with pid: %d to finish.\n", p->pid);
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
@@ -595,7 +592,6 @@ int proc_join (int pid) {
         p->name[0] = 0;
         p->killed = 0;
         release(&ptable.lock);
-        //cprintf("Proc with pid: %d returning due to one of my children is dead\n", proc->pid);
         return pid;
       }
     }
@@ -608,7 +604,6 @@ int proc_join (int pid) {
     }
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-    //cprintf("\n***PID: %d falling asleep***\n", proc->pid);
     sleep(proc, &ptable.lock);  //DOC: wait-sleep
   }
 }
