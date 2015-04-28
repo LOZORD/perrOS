@@ -112,9 +112,11 @@ growproc(int n)
   sz = proc->sz;
   if(n > 0){
     if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0)
+      //release(&ptable.lock); XXX
       return -1;
   } else if(n < 0){
     if((sz = deallocuvm(proc->pgdir, sz, sz + n)) == 0)
+      //release(&ptable.lock);
       return -1;
   }
   proc->sz = sz;
@@ -145,6 +147,10 @@ fork(void)
   int i, pid;
   struct proc *np;
 
+  if (proc->isThread) {
+    return -1;
+  }
+
   // Allocate process.
   if((np = allocproc()) == 0)
     return -1;
@@ -157,12 +163,7 @@ fork(void)
     return -1;
   }
   np->sz = proc->sz;
-  if (proc->isThread) {
-    np->parent = proc->parent;
-  }
-  else {
-    np->parent = proc;
-  }
+  np->parent = proc;
   *np->tf = *proc->tf;
   np->isThread = 0; //a fork (new proc) is not a thread!
 
@@ -218,11 +219,6 @@ exit(void)
       kill(p->pid);
       proc_join(p->pid);
       acquire(&ptable.lock);
-      //XXX might need to force children into zombie state
-      /*
-       * we need to account for the case that when a parent exits,
-       * it needs to kill its children
-       */
     }
     if (p->isThread && p->parent == proc->parent) {
       // sibling threads might be sleeping in wait().
@@ -231,8 +227,6 @@ exit(void)
   }
   // Parent might be sleeping in wait().
   wakeup1(proc->parent);
-  //while(wait() != -1) { }
-  //release(&ptable.lock);
 
   // Jmp into the scheduler, never to return.
   proc->state = ZOMBIE;
@@ -248,6 +242,10 @@ wait(void)
   struct proc *p;
   int havekids, pid;
 
+  if (proc->isThread) {
+    return -1; //XXX
+  }
+
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for zombie children.
@@ -256,7 +254,6 @@ wait(void)
       if(p->parent != proc || p->isThread)
         continue;
       havekids = 1;
-      //cprintf("Waiting for child with pid: %d to finish.\n", p->pid);
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
@@ -269,7 +266,6 @@ wait(void)
         p->name[0] = 0;
         p->killed = 0;
         release(&ptable.lock);
-        //cprintf("returning due to one of my children is dead\n");
         return pid;
       }
     }
@@ -277,12 +273,10 @@ wait(void)
     // No point waiting if we don't have any children.
     if(!havekids || proc->killed){
       release(&ptable.lock);
-      //cprintf("returning due to no kids or I'm dead\n");
       return -1;
     }
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-    //cprintf("\n***falling asleep***\n");
     sleep(proc, &ptable.lock);  //DOC: wait-sleep
   }
 }
@@ -548,18 +542,6 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   *(uint *)(stackPtr) = (uint)(0xffffffff);
   np->tf->esp = (uint)stackPtr;
 
-  /* XXX
-  //uint * stackBottom = stack + PGSIZE;
-  uint *stackBottom, sp;
-  sp = (uint) stack + PGSIZE;
-  stackBottom = (uint *)sp;
-  stackBottom[0] = 0xffffffff;
-  stackBottom[1] = (uint)arg;
-  sp -= 8;
-  //stackBottom = stackBottom - (2 * sizeof(void *));
-  np->tf->esp = (uint)sp; // stackBottom;
-  */
-
   np->state = RUNNABLE;
 
   return pid;
@@ -576,7 +558,7 @@ int proc_join (int pid) {
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(!p->isThread)
         continue;
-      if((p->parent != proc) && (p->parent != proc->parent))
+      if(!((p->parent == proc) || (p->parent == proc->parent && proc->isThread))) //XXX
         continue;
       if((p->pid != pid && pid != -1))
         continue;
@@ -631,9 +613,8 @@ void lock_acquire(lock_t * lock) {
   int myTurn;
 
   myTurn = FetchAndAdd(&lock->ticket, 1);
-  //TODO do we need to put anything to sleep here?
   while (lock->turn != myTurn) {
-    //spin
+    //just spin
   }
 }
 
