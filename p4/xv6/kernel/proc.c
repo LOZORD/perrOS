@@ -536,7 +536,6 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   np->cwd = idup(proc->cwd);
 
   pid = np->pid;
-  np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
 
   np->allocatedStack = stack;
@@ -547,6 +546,8 @@ int proc_clone (void (*fnc)(void *), void * arg, void * stack) {
   stackPtr -= 4;
   *(uint *)(stackPtr) = (uint)(0xffffffff);
   np->tf->esp = (uint)stackPtr;
+
+  np->state = RUNNABLE;
 
   return pid;
 }

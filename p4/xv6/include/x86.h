@@ -212,29 +212,5 @@ struct trapframe {
   ushort padding6;
 };
 
-//LOCK LIBRARY
-//Taken from OSTEP CH 28, PG 13
-typedef struct _lock_ {
-  int ticket;
-  int turn;
-} lock_t;
-void lock_init(lock_t * lock);
-void lock_acquire(lock_t * lock);
-void lock_release(lock_t * lock);
-inline int FetchAndAdd(int * varPtr, int incr);
-
-//CV LIBRARY
-//CV struct TODO
-#define CVAR_QUEUE_SIZE 64
-typedef struct _cvar_ {
-  int head;                     //the head position of our circular array
-  int tail;                     //the number of live threads in our queue
-  int init;
-  int queue [CVAR_QUEUE_SIZE];  //the circular array
-  //lock_t * lock; //TODO: do we want this?
-} cond_t;
-void cv_init(cond_t * cvar);
-void cv_wait(cond_t * cvar, lock_t * lock);
-void cv_signal(cond_t * cvar);
 
 #endif // _X86_H_

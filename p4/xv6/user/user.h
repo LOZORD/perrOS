@@ -1,8 +1,6 @@
 #ifndef _USER_H_
 #define _USER_H_
 
-#include "x86.h"
-
 struct stat;
 
 // system calls

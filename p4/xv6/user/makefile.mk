@@ -18,8 +18,8 @@ USER_PROGS := \
 	wc\
 	zombie
 
-	#test verision
-	#init\
+	#test verision\
+	init\
 	kill\
 	sh\
 	usertests\
