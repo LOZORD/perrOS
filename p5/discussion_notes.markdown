@@ -51,3 +51,35 @@
   * Just print file and directory names
   * Do error checking, but then we don't have to fix them
   * Just report the error if any
+
+# Second day of discussion
+
+A file system is a non-human readable serialization.
+
+`fsck` finds problems and fixes them.
+
+```c
+struct superblock {
+  uint size;
+  unit numinodes;
+  uint numblocks;
+};
+```
+
+## Two methods for getting the image into memory
+* `lseek`, `read`, `write`
+  * treats image as a datafile
+  * read in bytes like a file
+  * Buffer superblock, inodes, blocks in to memory from "file"
+* `mmap`
+  * the file gets placed in memory
+  * Perry's opinion is that `lseek` should be used
+  * Remember to copy it back to disk
+
+## Tests
+* See if we can run our image if there are no irrecoverable errors
+* Can we mount the fs image?
+
+## LFS
+We don't write to the disk at all. All we do is read.
+Start by going to the data structures.

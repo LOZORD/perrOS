@@ -40,12 +40,12 @@ int main (int argc, char ** argv) {
 int loadImage (char * filename) {
   void * ptr = Mmap(filename);
   if (ptr == NULL) {
-    return 0;
+    return INVALID;
   }
   else {
     imagePointer = ptr;
   }
-  return 1;
+  return VALID;
 }
 
 void * Mmap (char * filename) {
