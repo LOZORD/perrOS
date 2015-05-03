@@ -13,12 +13,12 @@
 #define INVALID 0
 
 //Function prototypes
-int loadImage (char *);
 int checkSuperblock (struct superblock *);
-void * Mmap (char *);
 void reportAndDie (int, char *);
+int seekToBlock (int blockNum);
+int getImageFd (char * filename);
 //Global data
-void * imagePointer;
+int imageFd;
 struct superblock mySuperblock;
 
 int main (int argc, char ** argv) {
@@ -30,54 +30,28 @@ int main (int argc, char ** argv) {
     exit(EXIT_FAILURE);
   }
 
-  reportAndDie(loadImage(argv[1]), "Could not load image");
+  reportAndDie(getImageFd(argv[1]), "Could not load image");
 
   reportAndDie(checkSuperblock(&mySuperblock), "Superblock corrupted");
 
   exit(EXIT_SUCCESS);
 }
 
-int loadImage (char * filename) {
-  void * ptr = Mmap(filename);
-  if (ptr == NULL) {
+int getImageFd (char * filename) {
+  imageFd = open(filename, O_RDWR);
+
+  if (imageFd == -1) {
     return INVALID;
   }
   else {
-    imagePointer = ptr;
+    return VALID;
   }
-  return VALID;
-}
-
-void * Mmap (char * filename) {
-  void * ptr = NULL;
-  int fd;
-  struct stat filestatus;
-
-  fd = open(filename, O_RDONLY);
-
-  if (fd == -1) {
-    fprintf(stderr, "Couldn't read file descriptor\n");
-    exit(EXIT_FAILURE);
-  }
-
-  if (fstat(fd, &filestatus) == -1) {
-    fprintf(stderr, "Couldn't read file status\n");
-    exit(EXIT_FAILURE);
-  }
-
-  ptr = mmap(NULL, filestatus.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-
-  if (ptr == MAP_FAILED) {
-    fprintf(stderr, "Couldn't mmap file image\n");
-    exit(EXIT_FAILURE);
-  }
-
-  return ptr;
 }
 
 int checkSuperblock (struct superblock * super) {
-  //the first thing in the data should be the superblock
-  super = (struct superblock *) imagePointer;
+  //the second block is the superblock
+  reportAndDie(seekToBlock(1), "Couldn't seek file\n");
+  read(imageFd, super, sizeof(struct superblock));
 
   if (  super->size    == 0 ||
         super->nblocks == 0 ||
@@ -100,7 +74,6 @@ int checkSuperblock (struct superblock * super) {
     return INVALID;
   }
 
-
   return VALID;
 }
 
@@ -108,5 +81,18 @@ void reportAndDie (int isValid, char * report) {
   if (!isValid) {
     fprintf(stderr, "ERROR: %s\n", report);
     exit(EXIT_FAILURE);
+  }
+}
+
+int seekToBlock (int blockNum) {
+  if (!imageFd) {
+    return INVALID;
+  }
+
+  if(lseek(imageFd, blockNum * BSIZE, SEEK_SET) < 0) {
+    return INVALID;
+  }
+  else {
+    return VALID;
   }
 }
