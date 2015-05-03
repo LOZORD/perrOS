@@ -12,6 +12,8 @@
 #define VALID 1
 #define INVALID 0
 
+#define DEBUG 0
+
 //Function prototypes
 int checkSuperblock (struct superblock *);
 void reportAndDie (int, char *);
@@ -53,26 +55,53 @@ int checkSuperblock (struct superblock * super) {
   reportAndDie(seekToBlock(1), "Couldn't seek file\n");
   read(imageFd, super, sizeof(struct superblock));
 
+  #if DEBUG
+  printf("super\n\tsize\t%d\n\tnblocks\t%d\n\tninodes\t%d\n",
+    super->size, super->nblocks, super->ninodes);
+  #endif
+
   if (  super->size    == 0 ||
         super->nblocks == 0 ||
         super->ninodes == 0) {
     return INVALID;
   }
 
+  //computation from xv6/tools/mkfs.c
+  int bitblocks, usedblocks, freeblock;
+
+  bitblocks = super->size/(512*8) + 1;
+  usedblocks = super->ninodes / IPB + 3 + bitblocks;
+  freeblock = usedblocks;
+
+  #if DEBUG
+  printf("used %d (bit %d ninode %zu) free %u total %d\n", usedblocks,
+         bitblocks, super->ninodes/IPB + 1, freeblock, super->nblocks+usedblocks);
+  #endif
+
+  if (super->nblocks + usedblocks != super->size) {
+    return INVALID;
+  }
+
+  /*
   uint totalINodeSize = super->ninodes * sizeof(struct dinode);
   uint totalBlockSize = super->nblocks * BSIZE;
 
-  /*
   if (  super->size < totalINodeSize ||
         super->size < totalBlockSize ||
         super->size < totalINodeSize + totalBlockSize) {
     return INVALID;
   }
-  */
 
   if (super->size < totalINodeSize + totalBlockSize) {
     return INVALID;
   }
+  */
+
+  /*
+  if (super->size < super->nblocks + super->ninodes) {
+    return INVALID;
+  }
+  */
 
   return VALID;
 }
