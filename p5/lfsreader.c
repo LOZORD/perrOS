@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
 #include "structdefs.h"
@@ -20,8 +21,9 @@ void runLs ();
 //Global variables
 int imageFd;
 char imageName [PATH_SIZE + 1];
-int inspecteeFd;
+int inspecteeInode;
 char inspecteeName [PATH_SIZE + 1];
+checkpoint myCheckpointRegion;
 
 int main (int argc, char ** argv) {
   if (argc != 4) {
@@ -34,11 +36,26 @@ int main (int argc, char ** argv) {
 
   //Get the name of the thing we are inspecting (either a file or directory)
   strncpy(inspecteeName, argv[2], PATH_SIZE);
-  inspecteeFd = open(inspecteeName, O_RDONLY);
+  //inspecteeFd = open(inspecteeName, O_RDONLY);
 
   //Open up the image file
   strncpy(imageName, argv[3], PATH_SIZE);
   imageFd = open(imageName, O_RDONLY);
+
+  //Use the superblock/checkpoint region to get the inode number
+  //read(imageFd, &myCheckpointRegion, BLOCK_SIZE);
+  read(imageFd, &myCheckpointRegion, sizeof(checkpoint));
+  //read(imageFd, &(myCheckpointRegion.iMapPtr), BLOCK_SIZE);
+
+  printf("CR: size=%d\n", myCheckpointRegion.size);
+
+  int i;
+
+  for (i = 0; i < INODEPIECES; i++) {
+    printf("\tiMapPtr[%d]\t%x\n", i, myCheckpointRegion.iMapPtr[i]);
+  }
+
+  //TODO find inode for inspecteeInode
 
   if (isCat(cmd)) {
     runCat();
