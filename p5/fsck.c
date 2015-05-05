@@ -35,6 +35,7 @@ int main (int argc, char ** argv) {
   reportAndDie(getImageFd(argv[1]), "Could not load image");
 
   reportAndDie(checkSuperblock(&mySuperblock), "Superblock corrupted");
+  printf("Superblock is ok\n");
 
   exit(EXIT_SUCCESS);
 }
@@ -77,6 +78,10 @@ int checkSuperblock (struct superblock * super) {
   printf("used %d (bit %d ninode %zu) free %u total %d\n", usedblocks,
          bitblocks, super->ninodes/IPB + 1, freeblock, super->nblocks+usedblocks);
   #endif
+
+  if (super->size < super->ninodes || super->size < super->nblocks) {
+    return INVALID;
+  }
 
   if (super->nblocks + usedblocks != super->size) {
     return INVALID;
