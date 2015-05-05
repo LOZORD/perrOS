@@ -12,12 +12,14 @@
 #define INVALID_DIR_ENTRY_INODE -1
 #define CMD_SIZE  4
 #define PATH_SIZE 32
+#define DIRECTORY_SIZE BLOCK_SIZE/sizeof(dirEnt)
 
 //Function prototypes
 int isCat (char * c);
 void runCat ();
 int isLs  (char * c);
 void runLs ();
+void getINode (char *, int);
 //Global variables
 int imageFd;
 char imageName [PATH_SIZE + 1];
@@ -43,9 +45,7 @@ int main (int argc, char ** argv) {
   imageFd = open(imageName, O_RDONLY);
 
   //Use the superblock/checkpoint region to get the inode number
-  //read(imageFd, &myCheckpointRegion, BLOCK_SIZE);
   read(imageFd, &myCheckpointRegion, sizeof(checkpoint));
-  //read(imageFd, &(myCheckpointRegion.iMapPtr), BLOCK_SIZE);
 
   printf("CR: size=%d\n", myCheckpointRegion.size);
 
@@ -56,6 +56,9 @@ int main (int argc, char ** argv) {
   }
 
   //TODO find inode for inspecteeInode
+  int rootIMapPtr = myCheckpointRegion.iMapPtr[ROOT_DIR_INODE];
+
+  getINode(inspecteeName, rootIMapPtr);
 
   if (isCat(cmd)) {
     runCat();
@@ -94,4 +97,21 @@ int isLs (char * c) {
 
 void runLs () {
   printf("You've entered runLs!\n");
+}
+
+void getINode (char * name, int inodeLoc) {
+  //inode * myInode = NULL;
+  inode myInode;
+  dirEnt myDirectory [DIRECTORY_SIZE];
+  lseek(imageFd, inodeLoc , SEEK_SET);
+  read(imageFd, &myInode, sizeof(inode));
+  int directoryLoc = myInode.ptr[0];
+  lseek(imageFd, directoryLoc, SEEK_SET);
+  read(imageFd, &myDirectory, DIRECTORY_SIZE);
+  int i;
+  for (i = 0; i < DIRECTORY_SIZE; i++) {
+    printf("directory[%d]=\t%s\n", i, myDirectory[i].name);
+  }
+  //TODO trim string
+  //TODO recurse to get inode number
 }
