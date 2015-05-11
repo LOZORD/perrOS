@@ -155,7 +155,8 @@ void getINode (char * name, int inodeNum) {
   */
 
   i = 0;
-  while (name[i] != '/' && name[i] == '\0') {
+  //printf("name\t%s'/':%d\t'0':%d\n", name, name[0] == '/', name[0] == '\0');
+  while (name[i] != '/' && name[i] != '\0') {
     newDirPath[i] = name[i];
     i++;
   }
@@ -167,6 +168,8 @@ void getINode (char * name, int inodeNum) {
   }
   newDirPath[i] = '\0';
   int newSearchStrIndex = i + 1;
+
+  printf("\t\tGOT NEW DIR PATH AS %s\n", newDirPath);
 
   //TODO: something with name and i
 
@@ -188,6 +191,7 @@ void getINode (char * name, int inodeNum) {
           if (strcmp(currDirectory[j].name, newDirPath) == 0) {
             printf("Got match! INode num is %d\n", currDirectory[j].inum);
             newINodeNum = currDirectory[j].inum;
+            break; //any reason to continue on?
           }
         }
       }
@@ -195,29 +199,10 @@ void getINode (char * name, int inodeNum) {
   }
 
   if (isParentDirectory) {
+    printf("recursing...\n");
     getINode(name + newSearchStrIndex, newINodeNum);
   }
   else {
     inspecteeInode = newINodeNum;
   }
-
-  /*
-  //inode * myInode = NULL;
-  inode myInode;
-  dirEnt myDirectory [DIRECTORY_SIZE];
-  lseek(imageFd, inodeLoc , SEEK_SET);
-  read(imageFd, &myInode, sizeof(inode));
-  int directoryLoc = myInode.ptr[0];
-  lseek(imageFd, directoryLoc, SEEK_SET);
-  read(imageFd, &myDirectory, DIRECTORY_SIZE);
-  //TODO verify type
-  //TODO load block into array of dirEnts
-  //TODO check that inode is valid (not -1)
-  int i;
-  for (i = 0; i < DIRECTORY_SIZE; i++) {
-    printf("directory[%d]=\t%s\n", i, myDirectory[i].name);
-  }
-  //TODO trim string
-  //TODO recurse to get inode number using CR iMapPtr
-  */
 }
