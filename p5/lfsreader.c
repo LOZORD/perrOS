@@ -62,7 +62,7 @@ int main (int argc, char ** argv) {
   }
 
   getINode(inspecteeName[0] == '/' ? inspecteeName + 1 : inspecteeName,
-    ROOT_DIR_INODE_NUM);
+      ROOT_DIR_INODE_NUM);
 
   if (isCat(cmd)) {
     runCat();
@@ -93,11 +93,11 @@ void getInspecteeINode (inode * inspecteeINode) {
 
 int isCat (char * c) {
   return (
-    c[0] == 'c' &&
-    c[1] == 'a' &&
-    c[2] == 't' &&
-    c[3] == '\0'
-  );
+      c[0] == 'c' &&
+      c[1] == 'a' &&
+      c[2] == 't' &&
+      c[3] == '\0'
+      );
 }
 
 void runCat () {
@@ -105,33 +105,59 @@ void runCat () {
 
   printf("We have the file %s @ inode %d\n", inspecteeName, inspecteeINodeNum);
 
+  if (inspecteeINodeNum < 0) {
+    fprintf(stderr, "ERROR: Tried to `cat` a directory, or the file was not found!\n");
+    exit(EXIT_FAILURE);
+  }
+
   inode inspecteeINode;
 
   getInspecteeINode(&inspecteeINode);
 
   //we should only be cat-ing a file!
   assert(inspecteeINode.type == MFS_REGULAR_FILE);
+  assert(inspecteeINode.size >= 0);
 
-  int i;
-  char buff [BLOCK_SIZE];
+  printf("inode size:\t%d\n", inspecteeINode.size);
+
+  int i = 0;
+  char * buff = malloc(inspecteeINode.size + 1);
+
+  for (i = 0; i < NUM_PTRS_IN_INODE; i++) {
+    if (inspecteeINode.ptr[i]) {
+      lseek(imageFd, inspecteeINode.ptr[i], SEEK_SET);
+      read(imageFd, buff + i * BLOCK_SIZE, BLOCK_SIZE);
+    }
+  }
+
+  buff[inspecteeINode.size] = EOF;
+  i = 0;
+  while(buff[i] != EOF) {
+    putchar(buff[i++]);
+  }
+
+
+  /*buff = malloc(inspecteeINode.size + 1);
+  lseek(imageFd, inspecteeINode.ptr[i], SEEK_SET);
+  read(imageFd, buff, inspecteeINode.size);
+  buff[inspecteeINode.size] = '\0';
+  printf("%s", buff); //FIXME: how to print only good data?
+  */
+
+
+  /*
   //printf("FOO: %d\n", inspecteeINode.size/BLOCK_SIZE);
   //TODO how do we know size of file???
   for (i = 0; i < inspecteeINode.size; i++) {
     //XXX indirect pointers?
     //printf("hello\n");
     lseek(imageFd, inspecteeINode.ptr[i], SEEK_SET);
-    read(imageFd, buff, BLOCK_SIZE);
+    read(imageFd, buff, inspecteeINode.size);
+    buff[inspecteeINode.size] = '\0';
 
     printf("%s", buff); //FIXME: how to print only good data?
-
-    /*
-    int j;
-    while(buff[j] != EOF && j < BLOCK_SIZE) {
-      putchar(buff[j]);
-      j++;
-    }
-    */
   }
+  */
 }
 
 int isLs (char * c) {
@@ -184,7 +210,8 @@ void getINode (char * name, int inodeNum) {
   lseek(imageFd, currINodePtr, SEEK_SET);
   read(imageFd, &currINode, sizeof(inode));
 
-  printf("Got currINode!\n\tcurrINode.size=\t%d\n\tcurrINode.type=\t%d\n", currINode.size, currINode.type);
+  printf("Got currINode!\n\tcurrINode.size=\t%d\n\tcurrINode.type=\t%d\n",
+    currINode.size, currINode.type);
 
   int i, isParentDirectory = 0;
   char newDirPath [PATH_SIZE];
