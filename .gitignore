@@ -7,4 +7,8 @@ mytee
 
 # For P5
 *.img
+#!image1.img
+#!image2.img
+#!image3.img
+#!image4.img
 LFSCatBasic
