@@ -78,15 +78,6 @@ int main (int argc, char ** argv) {
   exit(EXIT_SUCCESS);
 }
 
-int isCat (char * c) {
-  return (
-    c[0] == 'c' &&
-    c[1] == 'a' &&
-    c[2] == 't' &&
-    c[3] == '\0'
-  );
-}
-
 void getInspecteeINode (inode * inspecteeINode) {
   int inspecteeIMapPtr = getIMapPtr(inspecteeINodeNum);
   inodeMap inspecteeIMap;
@@ -100,6 +91,15 @@ void getInspecteeINode (inode * inspecteeINode) {
   read(imageFd, inspecteeINode, sizeof(inode));
 }
 
+int isCat (char * c) {
+  return (
+    c[0] == 'c' &&
+    c[1] == 'a' &&
+    c[2] == 't' &&
+    c[3] == '\0'
+  );
+}
+
 void runCat () {
   printf("You've entered runCat!\n");
 
@@ -109,18 +109,6 @@ void runCat () {
 
   getInspecteeINode(&inspecteeINode);
 
-  /*
-  int inspecteeIMapPtr = getIMapPtr(inspecteeINodeNum);
-  inodeMap inspecteeIMap;
-
-  lseek(imageFd, inspecteeIMapPtr, SEEK_SET);
-  read(imageFd, &inspecteeIMap, sizeof(inodeMap));
-
-  int inspecteeINodePtr = getINodePtr(&inspecteeIMap, inspecteeINodeNum);
-
-  lseek(imageFd, inspecteeINodePtr, SEEK_SET);
-  read(imageFd, &inspecteeINode, sizeof(inode));
-  */
   //we should only be cat-ing a file!
   assert(inspecteeINode.type == MFS_REGULAR_FILE);
 
@@ -156,6 +144,8 @@ int isLs (char * c) {
 
 void runLs () {
   printf("You've entered runLs!\n");
+
+  printf("We have the directory %s @ inode %d\n", inspecteeName, inspecteeINodeNum);
 }
 
 int calcIMapPtr (int inodeNum) {
@@ -216,11 +206,10 @@ void getINode (char * name, int inodeNum) {
 
   printf("\t\tGOT NEW DIR PATH AS %s\n", newDirPath);
 
-  //TODO: something with name and i
-
   //just assume we are going through directories
   dirEnt currDirectory [DIRECTORY_SIZE];
-  int newINodeNum = -1;
+  int newINodeNum = -1234; //TODO this is getting set incorrectly when `ls` is ran...
+  //THIS MEANS THAT WE ARE NEVER FINDING A SUB-DIR...
 
   //currDirectory = (dirEnt)(malloc(currINode.size / sizeof(dirEnt)));
   //int blockIndex = 0;
