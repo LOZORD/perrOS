@@ -3,4 +3,4 @@ all: fsck.c lfsreader.c
 	gcc lfsreader.c -o lfsreader -Wall -Werror
 
 clean:
-	rm fsck lfsreader
+	rm myfsck lfsreader

@@ -24,18 +24,22 @@ int imageFd;
 struct superblock mySuperblock;
 
 int main (int argc, char ** argv) {
+  #if DEBUG
   printf("Welcome to fsck!\n");
+  #endif
 
   if (argc < 2) {
-    fprintf(stderr, "Need an image file!\n");
-    fprintf(stderr, "Usage: fsck <imagefile>\n");
+    fprintf(stdout, "Need an image file!\n");
+    fprintf(stdout, "Usage: fsck <imagefile>\n");
     exit(EXIT_FAILURE);
   }
 
   reportAndDie(getImageFd(argv[1]), "Could not load image");
 
   reportAndDie(checkSuperblock(&mySuperblock), "Superblock corrupted");
+  #if DEBUG
   printf("Superblock is ok\n");
+  #endif
 
   exit(EXIT_SUCCESS);
 }
@@ -79,13 +83,24 @@ int checkSuperblock (struct superblock * super) {
          bitblocks, super->ninodes/IPB + 1, freeblock, super->nblocks+usedblocks);
   #endif
 
+  int expectedSize = 4 + (super->ninodes/IPB) + super->nblocks;
+  if (super->size != expectedSize) {
+    super->size = expectedSize;
+    seekToBlock(1);
+    write(imageFd, super, sizeof(struct superblock));
+  }
+  #if DEBUG
+  printf("super\n\tsize\t%d\n\tnblocks\t%d\n\tninodes\t%d\n",
+    super->size, super->nblocks, super->ninodes);
+  #endif
+  if (super->size % BSIZE != 0) {
+    return INVALID;
+  }
+
   if (super->size < super->ninodes || super->size < super->nblocks) {
     return INVALID;
   }
 
-  if (super->nblocks + usedblocks != super->size) {
-    return INVALID;
-  }
 
   /*
   uint totalINodeSize = super->ninodes * sizeof(struct dinode);
@@ -113,7 +128,10 @@ int checkSuperblock (struct superblock * super) {
 
 void reportAndDie (int isValid, char * report) {
   if (!isValid) {
+    printf("Error!\n");
+    #if DEBUG
     fprintf(stderr, "ERROR: %s\n", report);
+    #endif
     exit(EXIT_FAILURE);
   }
 }
