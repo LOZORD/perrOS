@@ -16,6 +16,8 @@
 #define INODE_NUM_DENOM 16
 #define DIRECTORY_SIZE BLOCK_SIZE/sizeof(dirEnt)
 
+#define DEBUG 0
+
 //Function prototypes
 int isCat (char * c);
 void runCat ();
@@ -26,40 +28,49 @@ int getIMapPtr (int);
 int getINodePtr (inodeMap *, int);
 //Global variables
 int imageFd;
-char imageName [PATH_SIZE + 1];
+char * imageName;
 int inspecteeINodeNum;
-char inspecteeName [PATH_SIZE + 1];
+char * inspecteeName;
 checkpoint myCheckpointRegion;
 inodeMap rootIMap;
 inode rootINode;
 
 int main (int argc, char ** argv) {
   if (argc != 4) {
-    fprintf(stderr, "Usage:\nlfsreader [cat | ls] <[file | dir]pathname> <lfs image>\n");
+    fprintf(stdout, "Usage:\nlfsreader [cat | ls] <[file | dir]pathname> <lfs image>\n");
     exit(EXIT_FAILURE);
   }
 
   //Get the command
   char * cmd = argv[1];
 
+  int inspecteeNameSize, imageNameSize;
+
+  inspecteeNameSize = strlen(argv[2]);
+  imageNameSize = strlen(argv[3]);
+
+  inspecteeName = malloc(inspecteeNameSize + 1);
+  imageName = malloc(imageNameSize + 1);
   //Get the name of the thing we are inspecting (either a file or directory)
-  strncpy(inspecteeName, argv[2], PATH_SIZE);
-  //inspecteeFd = open(inspecteeName, O_RDONLY);
+  strncpy(inspecteeName, argv[2], inspecteeNameSize);
 
   //Open up the image file
-  strncpy(imageName, argv[3], PATH_SIZE);
+  strncpy(imageName, argv[3], imageNameSize);
   imageFd = open(imageName, O_RDONLY);
 
   //Use the superblock/checkpoint region to get the inode number
   read(imageFd, &myCheckpointRegion, sizeof(checkpoint));
 
+  #if DEBUG
   printf("CR: size=%d\n", myCheckpointRegion.size);
+  #endif
 
+  #if DEBUG
   int i;
-
   for (i = 0; i < INODEPIECES; i++) {
     printf("\tiMapPtr[%d]\t%x\n", i, myCheckpointRegion.iMapPtr[i]);
   }
+  #endif
 
   getINode(inspecteeName[0] == '/' ? inspecteeName + 1 : inspecteeName,
       ROOT_DIR_INODE_NUM);
@@ -71,7 +82,7 @@ int main (int argc, char ** argv) {
     runLs();
   }
   else {
-    fprintf(stderr, "Unknown command\n");
+    fprintf(stdout, "Unknown command\n");
     exit(EXIT_FAILURE);
   }
 
@@ -101,12 +112,14 @@ int isCat (char * c) {
 }
 
 void runCat () {
+  #if DEBUG
   printf("You've entered runCat!\n");
-
   printf("We have the file %s @ inode %d\n", inspecteeName, inspecteeINodeNum);
+  #endif
 
+  //we got a directory or a nonexistant file
   if (inspecteeINodeNum < 0) {
-    fprintf(stderr, "ERROR: Tried to `cat` a directory, or the file was not found!\n");
+    printf("Error!\n");
     exit(EXIT_FAILURE);
   }
 
@@ -118,7 +131,9 @@ void runCat () {
   assert(inspecteeINode.type == MFS_REGULAR_FILE);
   assert(inspecteeINode.size >= 0);
 
+  #if DEBUG
   printf("inode size:\t%d\n", inspecteeINode.size);
+  #endif
 
   int i = 0;
   char * buff = malloc(inspecteeINode.size + 1);
@@ -135,29 +150,6 @@ void runCat () {
   while(buff[i] != EOF) {
     putchar(buff[i++]);
   }
-
-
-  /*buff = malloc(inspecteeINode.size + 1);
-  lseek(imageFd, inspecteeINode.ptr[i], SEEK_SET);
-  read(imageFd, buff, inspecteeINode.size);
-  buff[inspecteeINode.size] = '\0';
-  printf("%s", buff); //FIXME: how to print only good data?
-  */
-
-
-  /*
-  //printf("FOO: %d\n", inspecteeINode.size/BLOCK_SIZE);
-  //TODO how do we know size of file???
-  for (i = 0; i < inspecteeINode.size; i++) {
-    //XXX indirect pointers?
-    //printf("hello\n");
-    lseek(imageFd, inspecteeINode.ptr[i], SEEK_SET);
-    read(imageFd, buff, inspecteeINode.size);
-    buff[inspecteeINode.size] = '\0';
-
-    printf("%s", buff); //FIXME: how to print only good data?
-  }
-  */
 }
 
 int isLs (char * c) {
@@ -169,9 +161,10 @@ int isLs (char * c) {
 }
 
 void runLs () {
+  #if DEBUG
   printf("You've entered runLs!\n");
-
   printf("We have the directory %s @ inode %d\n", inspecteeName, inspecteeINodeNum);
+  #endif
 }
 
 int calcIMapPtr (int inodeNum) {
@@ -193,7 +186,9 @@ int getINodePtr (inodeMap * i, int inodeNum) {
 }
 
 void getINode (char * name, int inodeNum) {
+  #if DEBUG
   printf("Searching for %s using inode offset %x\n", name, inodeNum);
+  #endif
 
   inodeMap currINodeMap;
   inode currINode;
@@ -205,19 +200,25 @@ void getINode (char * name, int inodeNum) {
 
   int currINodePtr = getINodePtr(&currINodeMap, inodeNum);
 
+  #if DEBUG
   printf("Got currIMapPtr as %d\n", currINodePtr);
+  #endif
 
   lseek(imageFd, currINodePtr, SEEK_SET);
   read(imageFd, &currINode, sizeof(inode));
 
+  #if DEBUG
   printf("Got currINode!\n\tcurrINode.size=\t%d\n\tcurrINode.type=\t%d\n",
     currINode.size, currINode.type);
+  #endif
 
   int i, isParentDirectory = 0;
   char newDirPath [PATH_SIZE];
 
   i = 0;
-  //printf("name\t%s'/':%d\t'0':%d\n", name, name[0] == '/', name[0] == '\0');
+  #if DEBUG
+  printf("name\t%s'/':%d\t'0':%d\n", name, name[0] == '/', name[0] == '\0');
+  #endif
   while (name[i] != '/' && name[i] != '\0') {
     newDirPath[i] = name[i];
     i++;
@@ -231,7 +232,9 @@ void getINode (char * name, int inodeNum) {
   newDirPath[i] = '\0';
   int newSearchStrIndex = i + 1;
 
+  #if DEBUG
   printf("\t\tGOT NEW DIR PATH AS %s\n", newDirPath);
+  #endif
 
   //just assume we are going through directories
   dirEnt currDirectory [DIRECTORY_SIZE];
@@ -248,9 +251,13 @@ void getINode (char * name, int inodeNum) {
       int j;
       for (j = 0; j < DIRECTORY_SIZE; j++) {
         if (currDirectory[j].name && currDirectory[j].inum >= 0) {
+          #if DEBUG
           printf("\t\t%s\n", currDirectory[j].name);
+          #endif
           if (strcmp(currDirectory[j].name, newDirPath) == 0) {
+            #if DEBUG
             printf("Got match! INode num is %d\n", currDirectory[j].inum);
+            #endif
             newINodeNum = currDirectory[j].inum;
             break; //any reason to continue on?
           }
@@ -260,7 +267,9 @@ void getINode (char * name, int inodeNum) {
   }
 
   if (isParentDirectory) {
+    #if DEBUG
     printf("recursing...\n");
+    #endif
     getINode(name + newSearchStrIndex, newINodeNum);
   }
   else {
