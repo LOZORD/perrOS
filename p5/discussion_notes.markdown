@@ -83,3 +83,24 @@ struct superblock {
 ## LFS
 We don't write to the disk at all. All we do is read.
 Start by going to the data structures.
+
+# Sankar's Checks
+* Superblock
+  * num blocks > size
+  * num inodes > size
+* Inodes
+  * valid type
+  * file/directory size > fs size
+  * sensible ref count
+  * all inodes are reachable from root (every inode should have a parent [except root])
+* Data blocks
+  * No block should be pointed to by more than one inode
+  * Inode check is complete (you should know the data blocks reference valid inodes)
+  * Compare this against free data block bitmap
+  * Fix any inconsistencies
+* Directories
+  * Check that `.` and `..` references exist and are valid
+  * Clear directory entry if invalid
+  * Place orphans in `lost+found`
+    * Valid inodes with no reference
+    * Give some random, UUID
