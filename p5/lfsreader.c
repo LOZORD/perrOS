@@ -6,7 +6,6 @@
 #include <fcntl.h>
 #include <string.h>
 #include "structdefs.h"
-#include "assert.h" //TODO: replace with die function
 
 #define BLOCK_SIZE 4096
 #define ROOT_DIR_INODE_NUM 0
@@ -86,6 +85,9 @@ int main (int argc, char ** argv) {
     exit(EXIT_FAILURE);
   }
 
+  free(inspecteeName);
+  free(imageName);
+
   exit(EXIT_SUCCESS);
 }
 
@@ -128,8 +130,14 @@ void runCat () {
   getInspecteeINode(&inspecteeINode);
 
   //we should only be cat-ing a file!
-  assert(inspecteeINode.type == MFS_REGULAR_FILE);
-  assert(inspecteeINode.size >= 0);
+  if (inspecteeINode.type != MFS_REGULAR_FILE) {
+    printf("Error!\n");
+    exit(EXIT_FAILURE);
+  }
+  if (inspecteeINode.size < 0) {
+    printf("Error!\n");
+    exit(EXIT_FAILURE);
+  }
 
   #if DEBUG
   printf("inode size:\t%d\n", inspecteeINode.size);
@@ -150,6 +158,7 @@ void runCat () {
   while(buff[i] != EOF) {
     putchar(buff[i++]);
   }
+  free(buff);
 }
 
 int isLs (char * c) {
@@ -165,6 +174,72 @@ void runLs () {
   printf("You've entered runLs!\n");
   printf("We have the directory %s @ inode %d\n", inspecteeName, inspecteeINodeNum);
   #endif
+
+  if (inspecteeINodeNum < 0) {
+    printf("Error!\n");
+    exit(EXIT_FAILURE);
+  }
+
+  inode inspecteeINode;
+
+  getInspecteeINode(&inspecteeINode);
+
+  if (inspecteeINode.type != MFS_DIRECTORY) {
+    printf("Error!\n");
+    exit(EXIT_FAILURE);
+  }
+  if (inspecteeINode.size < 0) {
+    printf("Error!\n");
+    exit(EXIT_FAILURE);
+  }
+
+  int i = 0;
+  inode childINode;
+  inodeMap childINodeMap;
+  dirEnt currDirectory [DIRECTORY_SIZE];
+  for (i = 0; i < NUM_PTRS_IN_INODE; i++) {
+    if(inspecteeINode.ptr[i] > 0) {
+      int blockPtr = inspecteeINode.ptr[i];
+      lseek(imageFd, blockPtr, SEEK_SET);
+      read(imageFd, currDirectory, BLOCK_SIZE);
+      int j;
+      for (j = 0; j < DIRECTORY_SIZE; j++) {
+        if (currDirectory[j].name && currDirectory[j].inum >= 0) {
+          int childINum = currDirectory[j].inum;
+          lseek(imageFd, getIMapPtr(childINum), SEEK_SET);
+          read(imageFd, &childINodeMap, sizeof(inodeMap));
+          lseek(imageFd, getINodePtr(&childINodeMap, childINum), SEEK_SET);
+          read(imageFd, &childINode, sizeof(inode));
+          if (childINode.type == MFS_DIRECTORY) {
+            printf("%s/\n", currDirectory[j].name);
+          }
+          else if (childINode.type == MFS_REGULAR_FILE) {
+            printf("%s\n", currDirectory[j].name);
+          }
+          else {
+            printf("Error!\n");
+            exit(EXIT_FAILURE);
+          }
+        }
+      }
+    }
+  }
+
+  /*
+  for (i = 0; i < NUM_PTRS_IN_INODE; i++) {
+    if(inspecteeINode.ptr[i]) {
+      lseek(imageFd, inspecteeINode.ptr[i], SEEK_SET);
+      read(imageFd, buff + i * BLOCK_SIZE, BLOCK_SIZE);
+    }
+  }
+
+  buff[inspecteeINode.size] = EOF;
+
+  i = 0;
+  while(buff[i] != EOF) {
+    putchar(buff[i++]);
+  }
+  */
 }
 
 int calcIMapPtr (int inodeNum) {
@@ -236,13 +311,20 @@ void getINode (char * name, int inodeNum) {
   printf("\t\tGOT NEW DIR PATH AS %s\n", newDirPath);
   #endif
 
+  //we've reached a directory for `ls`
+  if (newDirPath[0] == '\0') {
+    #if DEBUG
+    printf("REACHED TARGET DIRECTORY!\n");
+    #endif
+    inspecteeINodeNum = inodeNum;
+    return;
+  }
+
   //just assume we are going through directories
   dirEnt currDirectory [DIRECTORY_SIZE];
   int newINodeNum = -1234; //TODO this is getting set incorrectly when `ls` is ran...
   //THIS MEANS THAT WE ARE NEVER FINDING A SUB-DIR...
 
-  //currDirectory = (dirEnt)(malloc(currINode.size / sizeof(dirEnt)));
-  //int blockIndex = 0;
   for (i = 0; i < NUM_PTRS_IN_INODE; i++) {
     if(currINode.ptr[i] > 0) {
       int blockPtr = currINode.ptr[i];
@@ -271,6 +353,9 @@ void getINode (char * name, int inodeNum) {
     printf("recursing...\n");
     #endif
     getINode(name + newSearchStrIndex, newINodeNum);
+  }
+  else if (newINodeNum < 0) {
+    //do something
   }
   else {
     inspecteeINodeNum = newINodeNum;
