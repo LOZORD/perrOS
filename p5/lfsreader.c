@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include "structdefs.h"
+#include "assert.h" //TODO: replace with die function
 
 #define BLOCK_SIZE 4096
 #define ROOT_DIR_INODE_NUM 0
@@ -21,10 +22,12 @@ void runCat ();
 int isLs  (char * c);
 void runLs ();
 void getINode (char *, int);
+int getIMapPtr (int);
+int getINodePtr (inodeMap *, int);
 //Global variables
 int imageFd;
 char imageName [PATH_SIZE + 1];
-int inspecteeInode;
+int inspecteeINodeNum;
 char inspecteeName [PATH_SIZE + 1];
 checkpoint myCheckpointRegion;
 inodeMap rootIMap;
@@ -84,8 +87,63 @@ int isCat (char * c) {
   );
 }
 
+void getInspecteeINode (inode * inspecteeINode) {
+  int inspecteeIMapPtr = getIMapPtr(inspecteeINodeNum);
+  inodeMap inspecteeIMap;
+
+  lseek(imageFd, inspecteeIMapPtr, SEEK_SET);
+  read(imageFd, &inspecteeIMap, sizeof(inodeMap));
+
+  int inspecteeINodePtr = getINodePtr(&inspecteeIMap, inspecteeINodeNum);
+
+  lseek(imageFd, inspecteeINodePtr, SEEK_SET);
+  read(imageFd, inspecteeINode, sizeof(inode));
+}
+
 void runCat () {
   printf("You've entered runCat!\n");
+
+  printf("We have the file %s @ inode %d\n", inspecteeName, inspecteeINodeNum);
+
+  inode inspecteeINode;
+
+  getInspecteeINode(&inspecteeINode);
+
+  /*
+  int inspecteeIMapPtr = getIMapPtr(inspecteeINodeNum);
+  inodeMap inspecteeIMap;
+
+  lseek(imageFd, inspecteeIMapPtr, SEEK_SET);
+  read(imageFd, &inspecteeIMap, sizeof(inodeMap));
+
+  int inspecteeINodePtr = getINodePtr(&inspecteeIMap, inspecteeINodeNum);
+
+  lseek(imageFd, inspecteeINodePtr, SEEK_SET);
+  read(imageFd, &inspecteeINode, sizeof(inode));
+  */
+  //we should only be cat-ing a file!
+  assert(inspecteeINode.type == MFS_REGULAR_FILE);
+
+  int i;
+  char buff [BLOCK_SIZE];
+  //printf("FOO: %d\n", inspecteeINode.size/BLOCK_SIZE);
+  //TODO how do we know size of file???
+  for (i = 0; i < inspecteeINode.size; i++) {
+    //XXX indirect pointers?
+    //printf("hello\n");
+    lseek(imageFd, inspecteeINode.ptr[i], SEEK_SET);
+    read(imageFd, buff, BLOCK_SIZE);
+
+    printf("%s", buff); //FIXME: how to print only good data?
+
+    /*
+    int j;
+    while(buff[j] != EOF && j < BLOCK_SIZE) {
+      putchar(buff[j]);
+      j++;
+    }
+    */
+  }
 }
 
 int isLs (char * c) {
@@ -141,19 +199,6 @@ void getINode (char * name, int inodeNum) {
   int i, isParentDirectory = 0;
   char newDirPath [PATH_SIZE];
 
-  /*
-  for (i = 0; i < PATH_SIZE;i++) {
-    newDirPath[i] = name[i];
-    if (name[i] == '/' && name[i + 1] != '\0') {
-      //it's parent directory
-      printf("got unit filepath\n");
-      isParentDirectory = 1;
-      newDirPath[i] = '\0';
-      break;
-    }
-  }
-  */
-
   i = 0;
   //printf("name\t%s'/':%d\t'0':%d\n", name, name[0] == '/', name[0] == '\0');
   while (name[i] != '/' && name[i] != '\0') {
@@ -203,6 +248,8 @@ void getINode (char * name, int inodeNum) {
     getINode(name + newSearchStrIndex, newINodeNum);
   }
   else {
-    inspecteeInode = newINodeNum;
+    inspecteeINodeNum = newINodeNum;
   }
+
+  return;
 }
