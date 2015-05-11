@@ -26,6 +26,8 @@ char imageName [PATH_SIZE + 1];
 int inspecteeInode;
 char inspecteeName [PATH_SIZE + 1];
 checkpoint myCheckpointRegion;
+inodeMap rootIMap;
+inode rootINode;
 
 int main (int argc, char ** argv) {
   if (argc != 4) {
@@ -55,10 +57,62 @@ int main (int argc, char ** argv) {
     printf("\tiMapPtr[%d]\t%x\n", i, myCheckpointRegion.iMapPtr[i]);
   }
 
-  //TODO find inode for inspecteeInode
-  int rootIMapPtr = myCheckpointRegion.iMapPtr[ROOT_DIR_INODE];
+  int rootINodeLoc = myCheckpointRegion.iMapPtr[0];
+  lseek(imageFd, rootINodeLoc, SEEK_SET);
+  read(imageFd, &rootINode, sizeof(inode));
+  //TODO check type
+  int rootDirLoc = rootINode.ptr[0];
+  dirEnt * rootDir = malloc(rootINode.size);
+  lseek(imageFd, rootDirLoc, SEEK_SET);
+  read(imageFd, rootDir, rootINode.size);
 
-  getINode(inspecteeName, rootIMapPtr);
+  for(i = 0; i < rootINode.size/sizeof(dirEnt); i++) {
+    //printf("rootInode[%d]\tname:%s\tinode:%d\n", i, rootDir[i].name, rootDir[i].inum);
+    if (rootDir[i].name && rootDir[i].name[0]) {
+      printf("\t\t\t%s\n", rootDir[i].name);
+    }
+  }
+
+  /*
+  //TODO find inode for inspecteeInode
+  int rootIMapPtr = myCheckpointRegion.iMapPtr[ROOT_DIR_INODE];// + myCheckpointRegion.iMapPtr[1];
+
+  //rootIMapPtr = myCheckpointRegion.iMapPtr[ROOT_DIR_INODE] + (void *)(&myCheckpointRegion);
+  //
+
+  lseek(imageFd, rootIMapPtr, SEEK_SET);
+  read(imageFd, &rootIMap, sizeof(inodeMap));
+
+  for(i = 0; i < 16; i++) {
+    printf("root imap[%d]->%x\n", i, rootIMap.inodePtr[i]);
+  }
+  int rootINodeOffset = rootIMap.inodePtr[ROOT_DIR_INODE];
+  lseek(imageFd, rootINodeOffset, SEEK_SET);
+  read(imageFd, &rootINode, sizeof(inode));
+
+  printf("\n\nROOT INODE\n\n");
+  //XXX check that it is a directory, not a file!
+  printf("\tsize:\t%d\n\ttype:\t%d\n", rootINode.size, rootINode.type);
+  for(i = 0; i < 14; i++) {
+    printf("\t\trootInode.ptr[%d]=%x\n", i, rootINode.ptr[i]);
+  }
+
+  int rootDirOffset = rootINode.ptr[0];
+  lseek(imageFd, rootDirOffset, SEEK_SET);
+
+  int rootDirSize = rootINode.size / sizeof(dirEnt);
+  dirEnt * rootDirectory = malloc(rootINode.size/sizeof(dirEnt));
+
+  for(i = 0; i < rootDirSize; i++) {
+    printf("rootDirectory[%d]\t = %s\t%x\n", i, rootDirectory[i].name, rootDirectory[i].inum);
+  }
+
+  //TODO
+
+  getINode(inspecteeName, rootIMap.inodePtr[0] ///rootIMapPtr/);
+  //getINode(inspecteeName, rootIMap.inodePtr[1]);
+  //getINode(inspecteeName, rootIMap.inodePtr[2]);
+  */
 
   if (isCat(cmd)) {
     runCat();
@@ -100,6 +154,7 @@ void runLs () {
 }
 
 void getINode (char * name, int inodeLoc) {
+  printf("Searching for %s using inode offset %x\n", name, inodeLoc);
   //inode * myInode = NULL;
   inode myInode;
   dirEnt myDirectory [DIRECTORY_SIZE];
@@ -108,10 +163,13 @@ void getINode (char * name, int inodeLoc) {
   int directoryLoc = myInode.ptr[0];
   lseek(imageFd, directoryLoc, SEEK_SET);
   read(imageFd, &myDirectory, DIRECTORY_SIZE);
+  //TODO verify type
+  //TODO load block into array of dirEnts
+  //TODO check that inode is valid (not -1)
   int i;
   for (i = 0; i < DIRECTORY_SIZE; i++) {
     printf("directory[%d]=\t%s\n", i, myDirectory[i].name);
   }
   //TODO trim string
-  //TODO recurse to get inode number
+  //TODO recurse to get inode number using CR iMapPtr
 }
