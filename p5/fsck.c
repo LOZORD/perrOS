@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <assert.h>
@@ -13,6 +14,9 @@
 #define INVALID 0
 #define SUPERBLOCK_NUMBER 1
 #define INODES_BLOCK_NUMBER 2
+#define T_DIR  1   // Directory
+#define T_FILE 2   // File
+#define T_DEV  3   // Special device
 
 #define DEBUG 0
 // File system implementation.  Four layers:
@@ -34,6 +38,10 @@ int getCharIndexFromAddr (int);
 void printBitMap (unsigned char *);
 void destroyInodeFromBlockAddr(int);
 void compareBitMaps ();
+void fixBadInodeTypes ();
+void markAsFreeInBitMap(int);
+void fixBadInodeTypes (struct dinode *);
+int isInvalidType (struct dinode *);
 //Global data
 int imageFd;
 struct superblock mySuperblock;
@@ -92,8 +100,8 @@ int main (int argc, char ** argv) {
 
   reportAndDie(checkFreeMap(), "Freemap is not good");
   #if DEBUG
-  printf("after ANDing\n");
-  printBitMap(myFreeMap);
+  //printf("after ANDing\n");
+  //printBitMap(myFreeMap);
   #endif
   //write the corrected bitmap and corrected inodes
   seekToBlock(INODES_BLOCK_NUMBER);
@@ -101,6 +109,15 @@ int main (int argc, char ** argv) {
 
   seekToBlock(bitMapRegionStart);
   write(imageFd, theirFreeMap, numBlockChars);
+
+  //struct dinode * rootInode = &(myInodes[ROOTINO]);
+  /*
+  if (rootInode->type != T_DIR) {
+    printf("Error!\n");
+    //TODO
+  }
+  */
+  //fixBadInodeTypes(rootInode);
 
   #if DEBUG
   printf("their size:%lu\tour size:%lu\n", sizeof(theirFreeMap[0]), sizeof(myFreeMap[0]));
@@ -155,8 +172,8 @@ int checkSuperblock (struct superblock * super) {
     write(imageFd, super, sizeof(struct superblock));
   }
   #if DEBUG
-  printf("super\n\tsize\t%d\n\tnblocks\t%d\n\tninodes\t%d\n",
-    super->size, super->nblocks, super->ninodes);
+  //printf("super\n\tsize\t%d\n\tnblocks\t%d\n\tninodes\t%d\n",
+    //super->size, super->nblocks, super->ninodes);
   #endif
   //XXX should these checks come beforehand?
   if (super->size % BSIZE != 0) {
@@ -174,12 +191,12 @@ void markAsBusyInMyFreeMap (int addr) {
   //SHIFTING
   int charInd = getCharIndexFromAddr(addr);
   #if DEBUG
-  printf("got charIndex as %d\n", charInd);
+  //printf("got charIndex as %d\n", charInd);
   #endif
   unsigned char c = myFreeMap[charInd];
   int bitInd = getBitIndexFromAddr(addr);
   #if DEBUG
-  printf("got bitInd as %d\n", bitInd);
+  //printf("got bitInd as %d\n", bitInd);
   #endif
   char bit = 0x01 << bitInd;
   bit |= c;
@@ -194,7 +211,7 @@ int getBitIndexFromAddr (int addr) {
 }
 
 void printInode (struct dinode * i) {
-  printf("inode.size:%d\n\t.type:%d\n\t.nlinks:%d\n", i->size, i->type, i->nlink);
+  //printf("inode.size:%d\n\t.type:%d\n\t.nlinks:%d\n", i->size, i->type, i->nlink);
 }
 
 int checkFreeMap () {
@@ -211,14 +228,14 @@ int checkFreeMap () {
   myFreeMap[3] = 0x1f;
 
   for (i = 1; i <= mySuperblock.ninodes; i++) {
-    //printf("myInodes[%d]\n", i);
     //printInode(&myInodes[i]);
-    if(myInodes[i].type > 0) {
+    int type = myInodes[i].type;
+    if(type == T_DIR || type == T_FILE || type == T_DEV) {
       int j;
       for (j = 0; j < NDIRECT; j++) {
         int addr = myInodes[i].addrs[j];
         #if DEBUG
-        printf("got direct pointer addr: %d\n", addr);
+        //printf("got direct pointer addr: %d\n", addr);
         #endif
         markAsBusyInMyFreeMap(addr);
       }
@@ -237,14 +254,20 @@ int checkFreeMap () {
         }
       }
     }
-    else {
-      //TODO
+    else if(type != 0){
+      printf("myInodes[%d]\ntype: %d\n", i, myInodes[i].type);
+      //fixBadInodeType(&myInode[i]);
+      //will be fixed in a later func...
+      //memset(&myInodes[i], 0, sizeof(struct dinode));
+      myInodes[i].type = 0;
+      printf("after setting to null\n");
+      printf("myInodes[%d]\ntype: %d\n", i, myInodes[i].type);
     }
   }
 
   #if DEBUG
-  printf("Bitmap built\n");
-  compareBitMaps();
+  //printf("Bitmap built\n");
+  //compareBitMaps();
   #endif
   //now AND the bitmaps together
   for (i = 0; i < numBlockChars; i++) {
@@ -266,8 +289,8 @@ int checkFreeMap () {
   }
 
   #if DEBUG
-  printf("finally...\n");
-  printBitMap(theirFreeMap);
+  //printf("finally...\n");
+  //printBitMap(theirFreeMap);
   #endif
 
   return VALID;
@@ -277,7 +300,7 @@ void reportAndDie (int isValid, char * report) {
   if (!isValid) {
     printf("Error!\n");
     #if DEBUG
-    fprintf(stderr, "ERROR: %s\n", report);
+    //fprintf(stderr, "ERROR: %s\n", report);
     #endif
     exit(EXIT_FAILURE);
   }
@@ -345,4 +368,98 @@ void destroyInodeFromBlockAddr(int addr) {
       }
     }
   }
+}
+
+void fixBadInodeTypes (struct dinode * parent) {
+  if(parent != &myInodes[ROOTINO]){
+    printf("\n\n\nRECURSION!!\n\n\n");
+  }
+  int i;
+  struct dirent * parentDirectory = calloc (parent->size, sizeof(struct dirent));
+
+  int remainingSize = parent->size;
+  for (i = 0; i < NDIRECT + 1; i++) {
+    if (parent->addrs[i] > 0 && i != NDIRECT) {
+      seekToBlock(parent->addrs[i]);
+      read(imageFd, parentDirectory + i*BSIZE,  (BSIZE < remainingSize ? BSIZE : remainingSize));
+      remainingSize -= BSIZE;
+    }
+    if (i == NDIRECT) {
+      if(parent->addrs[i]){
+        int * indirectPtrs = calloc (BSIZE, sizeof(int));
+        seekToBlock(parent->addrs[i]);
+        read(imageFd, indirectPtrs, BSIZE);
+        int j;
+        for(j = 0; j < BSIZE/sizeof(int); j++){
+          if (indirectPtrs[j]) {
+            seekToBlock(indirectPtrs[j]);
+            read(imageFd, parentDirectory + (i+j)*BSIZE,  (BSIZE < remainingSize ? BSIZE : remainingSize));
+            remainingSize -= BSIZE;
+          }
+        }
+      }
+    }
+  }
+  for(i=0; i < parent->size/sizeof(struct dirent); i++){
+    int inum =  parentDirectory[i].inum;
+    if(parentDirectory[i].name[0] != '.' && inum){
+      #if DEBUG
+      printf("inum: %d\nname: %s\n", inum, parentDirectory[i].name);
+      #endif
+      int type = myInodes[inum].type;
+      if( type != T_DIR || type != T_FILE || type != T_DEV){
+        //invalid type
+        int j;
+        for (j = 0; j < NDIRECT; j++) {
+          int addr = myInodes[inum].addrs[j];
+          #if DEBUG
+          //printf("got direct pointer addr: %d\n", addr);
+          #endif
+          markAsFreeInBitMap(addr);
+        }
+        //TODO then do indirect
+        if (myInodes[inum].addrs[NDIRECT] > 0) {
+          markAsFreeInBitMap(myInodes[inum].addrs[NDIRECT]);
+          int indirectBlock = myInodes[inum].addrs[NDIRECT];
+          int indirectBlockEntries [BSIZE / sizeof(int)];
+          seekToBlock(indirectBlock);
+          read(imageFd, indirectBlockEntries, BSIZE);
+          for (j = 0; j < BSIZE / sizeof(int); j++) {
+            if(indirectBlockEntries[j] > 0) {
+              int indirectEntryAddr = indirectBlockEntries[j];
+              markAsFreeInBitMap(indirectEntryAddr);
+            }
+          }
+        }
+        memset(&myInodes[inum], 0, sizeof(struct dinode));
+        memset(&parentDirectory[i], 0, sizeof(struct dirent)); //TODO may need to shift up other entries
+      }else{
+        if(type == T_DIR){
+          printf("Saw A Dir\n");
+          fixBadInodeTypes(&myInodes[inum]);
+        }
+      }
+    }
+  }
+}
+
+void markAsFreeInBitMap(int addr){
+  //SHIFTING
+  int charInd = getCharIndexFromAddr(addr);
+  #if DEBUG
+  //printf("got charIndex as %d\n", charInd);
+  #endif
+  unsigned char c = myFreeMap[charInd];
+  int bitInd = getBitIndexFromAddr(addr);
+  #if DEBUG
+  //printf("got bitInd as %d\n", bitInd);
+  #endif
+  char bit = 0x01 << bitInd;
+  bit = ~bit;
+  bit &= c;
+  theirFreeMap[charInd] = bit;
+}
+
+int isInvalidType (struct dinode * i) {
+  return (i->type < 1 || i->type > 3);
 }
