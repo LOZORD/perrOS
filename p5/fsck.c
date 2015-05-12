@@ -14,7 +14,7 @@
 #define SUPERBLOCK_NUMBER 1
 #define INODES_BLOCK_NUMBER 2
 
-#define DEBUG 0
+#define DEBUG 1
 // File system implementation.  Four layers:
 //   + Blocks: allocator for raw disk blocks.
 //   + Files: inode allocator, reading, writing, metadata.
@@ -94,11 +94,11 @@ int main (int argc, char ** argv) {
   printBitMap(myFreeMap);
   #endif
   //write the corrected bitmap and corrected inodes
-  seekToBlock(INODES_BLOCK_NUMBER);
-  write(imageFd, myInodes, mySuperblock.ninodes * sizeof(struct dinode));
+  //seekToBlock(INODES_BLOCK_NUMBER);
+  //write(imageFd, myInodes, mySuperblock.ninodes * sizeof(struct dinode));
 
-  seekToBlock(bitMapRegionStart);
-  write(imageFd, theirFreeMap, numBlockChars);
+  //seekToBlock(bitMapRegionStart);
+  //write(imageFd, theirFreeMap, numBlockChars);
 
   #if DEBUG
   printf("their size:%lu\tour size:%lu\n", sizeof(theirFreeMap[0]), sizeof(myFreeMap[0]));
