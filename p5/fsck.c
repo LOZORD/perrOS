@@ -33,6 +33,7 @@ int getBitIndexFromAddr (int);
 int getCharIndexFromAddr (int);
 void printBitMap (unsigned char *);
 void destroyInodeFromBlockAddr(int);
+void compareBitMaps ();
 //Global data
 int imageFd;
 struct superblock mySuperblock;
@@ -40,6 +41,7 @@ unsigned char * theirFreeMap;
 unsigned char * myFreeMap;
 struct dinode * myInodes;
 int numBlockChars; //the number of blocks (in units of bytes)
+int bitMapRegionStart; //start of bitmap
 
 int main (int argc, char ** argv) {
   #if DEBUG
@@ -65,7 +67,7 @@ int main (int argc, char ** argv) {
   myInodes = malloc(mySuperblock.ninodes * sizeof(struct dinode)); //TODO free
   read(imageFd, myInodes, mySuperblock.ninodes * sizeof(struct dinode));
   //garbage, super, inodes, garbage, bitmap
-  int bitMapRegionStart = 1 + 1 + (mySuperblock.ninodes / IPB) + 1;
+  bitMapRegionStart = 1 + 1 + (mySuperblock.ninodes / IPB) + 1;
 
   #if DEBUG
   printf("bit map starts at:%x\t%d\n", bitMapRegionStart, bitMapRegionStart);
@@ -179,10 +181,10 @@ void markAsBusyInMyFreeMap (int addr) {
 }
 
 int getCharIndexFromAddr (int addr) {
-  return addr/8;
+  return (addr - (bitMapRegionStart +1)) /8;
 }
 int getBitIndexFromAddr (int addr) {
-  return addr % 8;
+  return (addr - (bitMapRegionStart +1)) % 8;
 }
 
 void printInode (struct dinode * i) {
@@ -223,8 +225,8 @@ int checkFreeMap () {
   }
 
   #if DEBUG
-  printf("before ANDing\n");
-  printBitMap(myFreeMap);
+  printf("Bitmap built\n");
+  compareBitMaps();
   #endif
   //now AND the bitmaps together
   for (i = 0; i < numBlockChars; i++) {
@@ -281,6 +283,17 @@ void printBitMap (unsigned char * map) {
   int i;
   for (i = 0; i < numBlockChars; i++) {
     printf("%x ", map[i]);
+  }
+  printf("\n");
+  #endif
+}
+
+void compareBitMaps () {
+  #if DEBUG
+  int i;
+  printf("Theirs\tOurs\n");
+  for (i = 0; i < numBlockChars; i++) {
+    printf("%x\t%x\n", theirFreeMap[i], myFreeMap[i]);
   }
   printf("\n");
   #endif
