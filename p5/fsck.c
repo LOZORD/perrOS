@@ -11,8 +11,10 @@
 #include "fs.h"
 #define VALID 1
 #define INVALID 0
+#define SUPERBLOCK_NUMBER 1
+#define INODES_BLOCK_NUMBER 2
 
-#define DEBUG 1
+#define DEBUG 0
 // File system implementation.  Four layers:
 //   + Blocks: allocator for raw disk blocks.
 //   + Files: inode allocator, reading, writing, metadata.
@@ -29,12 +31,15 @@ int getImageFd (char * filename);
 int checkFreeMap ();
 int getBitIndexFromAddr (int);
 int getCharIndexFromAddr (int);
+void printBitMap (unsigned char *);
+void destroyInodeFromBlockAddr(int);
 //Global data
 int imageFd;
 struct superblock mySuperblock;
-char * theirFreeMap;
-char * myFreeMap;
+unsigned char * theirFreeMap;
+unsigned char * myFreeMap;
 struct dinode * myInodes;
+int numBlockChars; //the number of blocks (in units of bytes)
 
 int main (int argc, char ** argv) {
   #if DEBUG
@@ -68,30 +73,35 @@ int main (int argc, char ** argv) {
 
   seekToBlock(bitMapRegionStart); //seek to bitmap region
   //sizeof(char); //size of the freemap in char sizes (8 bits = 1 byte = 1 char)
-  int numBlockChars = (mySuperblock.nblocks/8) + (mySuperblock.nblocks % 8 != 0 ? 1 : 0);
+  numBlockChars = (mySuperblock.nblocks/8) + (mySuperblock.nblocks % 8 != 0 ? 1 : 0);
 
   #if DEBUG
   printf("numBlockChars: %d\tBlock size: %d\n", numBlockChars, BSIZE);
   #endif
-  theirFreeMap = malloc(numBlockChars);
-  myFreeMap = calloc(numBlockChars, sizeof(char)); //malloc and init to zero
+  theirFreeMap = calloc(numBlockChars, sizeof(unsigned char));
+  myFreeMap = calloc(numBlockChars, sizeof(unsigned char)); //malloc and init to zero
   //TODO free
   read(imageFd, theirFreeMap, numBlockChars);
 
   #if DEBUG
-  int i;
-  for (i = 0; i < numBlockChars; i++) {
-    printf("%x ", theirFreeMap[i]);
-  }
+  printf("their map\n");
+  printBitMap(theirFreeMap);
   #endif
 
   reportAndDie(checkFreeMap(), "Freemap is not good");
   #if DEBUG
-  printf("\nOUR BITMAP\n");
-  for (i = 0; i < numBlockChars; i++) {
-    printf("%x ", myFreeMap[i]);
-  }
-  printf("\n");
+  printf("after ANDing\n");
+  printBitMap(myFreeMap);
+  #endif
+  //write the corrected bitmap and corrected inodes
+  seekToBlock(INODES_BLOCK_NUMBER);
+  write(imageFd, myInodes, mySuperblock.ninodes * sizeof(struct dinode));
+
+  seekToBlock(bitMapRegionStart);
+  write(imageFd, theirFreeMap, numBlockChars);
+
+  #if DEBUG
+  printf("their size:%lu\tour size:%lu\n", sizeof(theirFreeMap[0]), sizeof(myFreeMap[0]));
   #endif
 
   exit(EXIT_SUCCESS);
@@ -163,24 +173,16 @@ void markAsBusyInMyFreeMap (int addr) {
   int charInd = getCharIndexFromAddr(addr);
   char c = myFreeMap[charInd];
   int bitInd = getBitIndexFromAddr(addr);
-  char bit = 8 >> bitInd;
-  bit &= c;
+  char bit = 0x80 >> bitInd;
+  bit |= c;
   myFreeMap[charInd] = bit;
 }
 
 int getCharIndexFromAddr (int addr) {
-  //garbage + super + inodes + garbage + bitmap
-  int dataBlockRegionStart = (1 + 1 + (mySuperblock.ninodes / IPB) + 1 + 1) * 512;
-  int blockNum = (addr - dataBlockRegionStart) / 512;
-  //assert(addr % 512 == 0);
-  return blockNum / 8;
+  return addr/8;
 }
 int getBitIndexFromAddr (int addr) {
-  //garbage + super + inodes + garbage + bitmap
-  int dataBlockRegionStart = (1 + 1 + (mySuperblock.ninodes / IPB) + 1 + 1) * 512;
-  int blockNum = (addr - dataBlockRegionStart) / 512;
-  //assert(addr % 512 == 0);
-  return blockNum % 8;
+  return addr % 8;
 }
 
 void printInode (struct dinode * i) {
@@ -192,21 +194,62 @@ int checkFreeMap () {
 
   int i;
 
-  for (i = 1; i < mySuperblock.ninodes; i++) {
-    printf("myInodes[%d]\n", i);
-    printInode(&myInodes[i]);
+  for (i = 1; i <= mySuperblock.ninodes; i++) {
+    //printf("myInodes[%d]\n", i);
+    //printInode(&myInodes[i]);
     if(myInodes[i].type > 0) {
       int j;
       for (j = 0; j < NDIRECT; j++) {
         int addr = myInodes[i].addrs[j];
         markAsBusyInMyFreeMap(addr);
       }
-      //then do indirect
+      //TODO then do indirect
+      if (myInodes[i].addrs[NDIRECT] > 0) {
+        int indirectBlock = myInodes[i].addrs[NDIRECT];
+        int indirectBlockEntries [BSIZE / sizeof(int)];
+        seekToBlock(indirectBlock);
+        read(imageFd, indirectBlockEntries, BSIZE);
+        for (j = 0; j < BSIZE / sizeof(int); j++) {
+          if(indirectBlockEntries[j] > 0) {
+            int indirectEntryAddr = indirectBlockEntries[j];
+            markAsBusyInMyFreeMap(indirectEntryAddr);
+          }
+        }
+      }
     }
     else {
       //TODO
     }
   }
+
+  #if DEBUG
+  printf("before ANDing\n");
+  printBitMap(myFreeMap);
+  #endif
+  //now AND the bitmaps together
+  for (i = 0; i < numBlockChars; i++) {
+    //myFreeMap[i] ^= theirFreeMap[i];
+    theirFreeMap[i] &= myFreeMap[i];
+    myFreeMap[i] ^= theirFreeMap[i];
+    if (myFreeMap[i]) {
+      //search for corresponding inode and remove it
+      char byte = myFreeMap[i];
+
+      int n;
+      for (n = 0; n < 8; n++) {
+        //if a certain bit is set...
+        if (byte & (0x80 >> n)) {
+          destroyInodeFromBlockAddr(i*8 + n);
+        }
+      }
+    }
+  }
+
+  #if DEBUG
+  printf("finally...\n");
+  printBitMap(theirFreeMap);
+  #endif
+
   return VALID;
 }
 
@@ -230,5 +273,45 @@ int seekToBlock (int blockNum) {
   }
   else {
     return VALID;
+  }
+}
+
+void printBitMap (unsigned char * map) {
+  #if DEBUG
+  int i;
+  for (i = 0; i < numBlockChars; i++) {
+    printf("%x ", map[i]);
+  }
+  printf("\n");
+  #endif
+}
+
+void destroyInodeFromBlockAddr(int addr) {
+  int i,j;
+
+  for (i = 0; i < mySuperblock.ninodes; i++) {
+    for (j = 0; j < NDIRECT; j++) {
+      if (myInodes[i].addrs[j] == addr) {
+        myInodes[i].type = -1;
+        return;
+      }
+    }
+    //also indirect block TODO
+    if (myInodes[i].addrs[NDIRECT] == addr) {
+      myInodes[i].type = -1;
+      return;
+    }
+    if (myInodes[i].addrs[NDIRECT] > 0) {
+      int indirectBlock = myInodes[i].addrs[NDIRECT];
+      int indirectBlockEntries [BSIZE / sizeof(int)];
+      seekToBlock(indirectBlock);
+      read(imageFd, indirectBlockEntries, BSIZE);
+      for (j = 0; j < BSIZE / sizeof(int); j++) {
+        if(indirectBlockEntries[j] == addr) {
+          myInodes[i].type = -1;
+          return;
+        }
+      }
+    }
   }
 }
