@@ -14,7 +14,7 @@
 #define SUPERBLOCK_NUMBER 1
 #define INODES_BLOCK_NUMBER 2
 
-#define DEBUG 1
+#define DEBUG 0
 // File system implementation.  Four layers:
 //   + Blocks: allocator for raw disk blocks.
 //   + Files: inode allocator, reading, writing, metadata.
@@ -75,7 +75,7 @@ int main (int argc, char ** argv) {
 
   seekToBlock(bitMapRegionStart); //seek to bitmap region
   //sizeof(char); //size of the freemap in char sizes (8 bits = 1 byte = 1 char)
-  numBlockChars = (mySuperblock.nblocks/8) + (mySuperblock.nblocks % 8 != 0 ? 1 : 0);
+  numBlockChars = ((mySuperblock.nblocks+29)/8) + ((mySuperblock.nblocks+29) % 8 != 0 ? 1 : 0);
 
   #if DEBUG
   printf("numBlockChars: %d\tBlock size: %d\n", numBlockChars, BSIZE);
@@ -96,11 +96,11 @@ int main (int argc, char ** argv) {
   printBitMap(myFreeMap);
   #endif
   //write the corrected bitmap and corrected inodes
-  //seekToBlock(INODES_BLOCK_NUMBER);
-  //write(imageFd, myInodes, mySuperblock.ninodes * sizeof(struct dinode));
+  seekToBlock(INODES_BLOCK_NUMBER);
+  write(imageFd, myInodes, mySuperblock.ninodes * sizeof(struct dinode));
 
-  //seekToBlock(bitMapRegionStart);
-  //write(imageFd, theirFreeMap, numBlockChars);
+  seekToBlock(bitMapRegionStart);
+  write(imageFd, theirFreeMap, numBlockChars);
 
   #if DEBUG
   printf("their size:%lu\tour size:%lu\n", sizeof(theirFreeMap[0]), sizeof(myFreeMap[0]));
@@ -173,18 +173,24 @@ int checkSuperblock (struct superblock * super) {
 void markAsBusyInMyFreeMap (int addr) {
   //SHIFTING
   int charInd = getCharIndexFromAddr(addr);
-  char c = myFreeMap[charInd];
+  #if DEBUG
+  printf("got charIndex as %d\n", charInd);
+  #endif
+  unsigned char c = myFreeMap[charInd];
   int bitInd = getBitIndexFromAddr(addr);
-  char bit = 0x80 >> bitInd;
+  #if DEBUG
+  printf("got bitInd as %d\n", bitInd);
+  #endif
+  char bit = 0x01 << bitInd;
   bit |= c;
   myFreeMap[charInd] = bit;
 }
 
 int getCharIndexFromAddr (int addr) {
-  return (addr - (bitMapRegionStart +1)) /8;
+  return (addr) /8;
 }
 int getBitIndexFromAddr (int addr) {
-  return (addr - (bitMapRegionStart +1)) % 8;
+  return (addr) % 8;
 }
 
 void printInode (struct dinode * i) {
@@ -196,6 +202,14 @@ int checkFreeMap () {
 
   int i;
 
+  myFreeMap[0] = 0xff;
+
+  myFreeMap[1] = 0xff;
+
+  myFreeMap[2] = 0xff;
+
+  myFreeMap[3] = 0x1f;
+
   for (i = 1; i <= mySuperblock.ninodes; i++) {
     //printf("myInodes[%d]\n", i);
     //printInode(&myInodes[i]);
@@ -203,10 +217,14 @@ int checkFreeMap () {
       int j;
       for (j = 0; j < NDIRECT; j++) {
         int addr = myInodes[i].addrs[j];
+        #if DEBUG
+        printf("got direct pointer addr: %d\n", addr);
+        #endif
         markAsBusyInMyFreeMap(addr);
       }
       //TODO then do indirect
       if (myInodes[i].addrs[NDIRECT] > 0) {
+        markAsBusyInMyFreeMap(myInodes[i].addrs[NDIRECT]);
         int indirectBlock = myInodes[i].addrs[NDIRECT];
         int indirectBlockEntries [BSIZE / sizeof(int)];
         seekToBlock(indirectBlock);
@@ -293,7 +311,7 @@ void compareBitMaps () {
   int i;
   printf("Theirs\tOurs\n");
   for (i = 0; i < numBlockChars; i++) {
-    printf("%x\t%x\n", theirFreeMap[i], myFreeMap[i]);
+    printf("i:%d:\t%x\t%x\n", i, theirFreeMap[i], myFreeMap[i]);
   }
   printf("\n");
   #endif
