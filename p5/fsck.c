@@ -40,7 +40,7 @@ void destroyInodeFromBlockAddr(int);
 void compareBitMaps ();
 void fixBadInodeTypes ();
 void markAsFreeInBitMap(int);
-void fixBadInodeTypes (struct dinode *);
+void fixBadInodeTypes (struct dinode *, int, int);
 int isInvalidType (struct dinode *);
 //Global data
 int imageFd;
@@ -52,6 +52,9 @@ int numBlockChars; //the number of blocks (in units of bytes)
 int bitMapRegionStart; //start of bitmap
 
 int main (int argc, char ** argv) {
+  assert(T_DIR == 1);
+  assert(T_FILE == 2);
+  assert(T_DEV == 3);
 
   if (argc < 2) {
     fprintf(stdout, "Need an image file!\n");
@@ -101,8 +104,8 @@ int main (int argc, char ** argv) {
   //printBitMap(myFreeMap);
   #endif
 
-  struct dinode * rootInode = &(myInodes[1]);
-  fixBadInodeTypes(rootInode);
+  struct dinode * rootInode = &(myInodes[ROOTINO]);
+  fixBadInodeTypes(rootInode, ROOTINO, ROOTINO);
 
   //write the corrected bitmap and corrected inodes
   seekToBlock(INODES_BLOCK_NUMBER);
@@ -157,6 +160,7 @@ int checkSuperblock (struct superblock * super) {
     //     bitblocks, super->ninodes/IPB + 1, freeblock, super->nblocks+usedblocks);
   #endif
 
+  //XXX should we be fstating instead???
   int expectedSize = 4 + (super->ninodes/IPB) + super->nblocks;
   if (super->size != expectedSize) {
     super->size = expectedSize;
@@ -353,10 +357,12 @@ void destroyInodeFromBlockAddr(int addr) {
   }
 }
 
-void fixBadInodeTypes (struct dinode * parent) {
-  if(parent != &myInodes[1]){
+void fixBadInodeTypes (struct dinode * parent, int parentInum, int grandParentInum) {
+  #if DEBUG
+  if(parent != &myInodes[ROOTINO]){
     printf("\n\n\nRECURSION!!\n\n\n");
   }
+  #endif
   int i;
   struct dirent * parentDirectory = calloc (parent->size, sizeof(struct dirent));
   int * indirectPtrs = calloc (BSIZE, sizeof(int));
@@ -383,12 +389,30 @@ void fixBadInodeTypes (struct dinode * parent) {
       }
     }
   }
+  #if DEBUG
+  if (parentDirectory[0].name[0] != '.') {
+    printf("`.` missing!\n");
+  }
+  if (parentDirectory[1].name[0] != '.') {
+    printf("`..` missing!\n");
+  }
+  #endif
+  //it should always have `.` and `..`
+  parentDirectory[0].name[0] = '.';
+  parentDirectory[0].name[1] = '\0';
+  parentDirectory[0].inum = parentInum;
+  parentDirectory[1].name[0] = '.';
+  parentDirectory[1].name[1] = '.';
+  parentDirectory[1].name[2] = '\0';
+  parentDirectory[1].inum = grandParentInum;
+  //if (type == T_DIR) {
+
   for(i=0; i < parent->size/sizeof(struct dirent); i++){
     int inum =  parentDirectory[i].inum;
+    #if DEBUG
+    printf("inum: %d\tname: %s\n", inum, parentDirectory[i].name);
+    #endif
     if(parentDirectory[i].name[0] != '.' && inum){
-      #if DEBUG
-      //printf("inum: %d\nname: %s\n", inum, parentDirectory[i].name);
-      #endif
       int type = myInodes[inum].type;
       if(isInvalidType(&myInodes[inum])){
         //invalid type
@@ -419,34 +443,37 @@ void fixBadInodeTypes (struct dinode * parent) {
         }
         memset(&myInodes[inum], 0, sizeof(struct dinode));
         memset(&parentDirectory[i], 0, sizeof(struct dirent)); //TODO may need to shift up other entries
-        remainingSize = parent->size;
-        int k;
-        for (k = 0; k < NDIRECT + 1; k++) {
-          if (parent->addrs[k] > 0 && k != NDIRECT) {
-            seekToBlock(parent->addrs[k]);
-            write(imageFd, parentDirectory + k*BSIZE, (BSIZE < remainingSize ? BSIZE : remainingSize));
-            remainingSize -= BSIZE;
-          }
-          if (k == NDIRECT) {
-            if(parent->addrs[k]){
-              int * indirectPtrs = calloc (BSIZE, sizeof(int));
-              seekToBlock(parent->addrs[k]);
-              read(imageFd, indirectPtrs, BSIZE);
-              int j;
-              for(j = 0; j < BSIZE/sizeof(int); j++){
-                if (indirectPtrs[j]) {
-                  seekToBlock(indirectPtrs[j]);
-                  write(imageFd, parentDirectory + (k+j)*BSIZE,  (BSIZE < remainingSize ? BSIZE : remainingSize));
-                  remainingSize -= BSIZE;
-                }
-              }
-            }
-          }
-        }
       }else{
         if(type == T_DIR){
+          #if DEBUG
           printf("Saw A Dir\n");
-          fixBadInodeTypes(&myInodes[inum]);
+          printf("current directory's inum:\t%d\n", inum);
+          #endif
+          fixBadInodeTypes(&myInodes[inum], inum, parentInum);
+        }
+      }
+    }
+    remainingSize = parent->size;
+    int k;
+    for (k = 0; k < NDIRECT + 1; k++) {
+      if (parent->addrs[k] > 0 && k != NDIRECT) {
+        seekToBlock(parent->addrs[k]);
+        write(imageFd, parentDirectory + k*BSIZE, (BSIZE < remainingSize ? BSIZE : remainingSize));
+        remainingSize -= BSIZE;
+      }
+      if (k == NDIRECT) {
+        if(parent->addrs[k]){
+          int * indirectPtrs = calloc (BSIZE, sizeof(int));
+          seekToBlock(parent->addrs[k]);
+          read(imageFd, indirectPtrs, BSIZE);
+          int j;
+          for(j = 0; j < BSIZE/sizeof(int); j++){
+            if (indirectPtrs[j]) {
+              seekToBlock(indirectPtrs[j]);
+              write(imageFd, parentDirectory + (k+j)*BSIZE,  (BSIZE < remainingSize ? BSIZE : remainingSize));
+              remainingSize -= BSIZE;
+            }
+          }
         }
       }
     }
