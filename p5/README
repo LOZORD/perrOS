@@ -1,0 +1,12 @@
+Name: Leo Rudberg
+CSL-ID: leo
+Name: Nicholas Hyatt
+CSL-ID: hyatt
+(Leave the second name and ID blank if working alone)
+(Do NOT suffix your CSL IDs with @cs.wisc.edu, the ID alone is sufficient)
+
+Implementation Details:
+
+We implemented lfsreader first because it was a shorter assignment.
+
+Then we worked on fsck, which was not a good time.
