@@ -14,6 +14,7 @@
 #define PATH_SIZE 64
 #define INODE_NUM_DENOM 16
 #define DIRECTORY_SIZE BLOCK_SIZE/sizeof(dirEnt)
+#define NUM_PTRS_IN_INODE 14
 
 #define DEBUG 0
 

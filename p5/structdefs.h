@@ -1,7 +1,6 @@
 #define INODEPIECES 256
 #define MFS_DIRECTORY 0
 #define MFS_REGULAR_FILE 1
-#define NUM_PTRS_IN_INODE 14
 
 typedef struct __attribute__((__packed__)) __checkpoint__       {
         int size;
@@ -16,7 +15,7 @@ typedef struct __attribute__((__packed__)) __dirEnt__   {
 typedef struct __attribute__((__packed__)) __inode__    {
         int size;
         int type;
-        int ptr[NUM_PTRS_IN_INODE];
+        int ptr[14];
 } inode;
 
 typedef struct __attribute__((__packed__)) __inodeMap__ {
