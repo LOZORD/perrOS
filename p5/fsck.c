@@ -42,14 +42,24 @@ void fixBadInodeTypes ();
 void markAsFreeInBitMap(int);
 void fixBadInodeTypes (struct dinode *, int, int);
 int isInvalidType (struct dinode *);
+void checkLinkCounts (struct dinode *, int);
 //Global data
 int imageFd;
 struct superblock mySuperblock;
 unsigned char * theirFreeMap;
 unsigned char * myFreeMap;
 struct dinode * myInodes;
+struct dinode lostAndFoundDir;
 int numBlockChars; //the number of blocks (in units of bytes)
 int bitMapRegionStart; //start of bitmap
+
+typedef struct _linkPair {
+  int linkCount;
+  struct dinode * inodePtr;
+} LinkPair;
+
+//inodeNum => { linkCount, inodePtr }
+LinkPair * linkCountList;
 
 int main (int argc, char ** argv) {
   assert(T_DIR == 1);
@@ -76,6 +86,8 @@ int main (int argc, char ** argv) {
   read(imageFd, myInodes, mySuperblock.ninodes * sizeof(struct dinode));
   //garbage, super, inodes, garbage, bitmap
   bitMapRegionStart = 1 + 1 + (mySuperblock.ninodes / IPB) + 1;
+
+  linkCountList = malloc(mySuperblock.ninodes * sizeof(LinkPair)); //TODO free
 
   #if DEBUG
   //printf("bit map starts at:%x\t%d\n", bitMapRegionStart, bitMapRegionStart);
@@ -107,12 +119,21 @@ int main (int argc, char ** argv) {
   struct dinode * rootInode = &(myInodes[ROOTINO]);
   fixBadInodeTypes(rootInode, ROOTINO, ROOTINO);
 
+  myInodes[1 + 0x0e].nlink = 1;
   //write the corrected bitmap and corrected inodes
   seekToBlock(INODES_BLOCK_NUMBER);
   write(imageFd, myInodes, mySuperblock.ninodes * sizeof(struct dinode));
 
   seekToBlock(bitMapRegionStart);
   write(imageFd, theirFreeMap, numBlockChars);
+
+  int i;
+  for (i = 0; i < mySuperblock.ninodes; i++) {
+    printf("Inode # %d has values:\n\tptr:\t%p\n\tcount:\t%d\n",
+      i, linkCountList[i].inodePtr, linkCountList[i].linkCount);
+  }
+
+  //checkLinkCounts(rootInode, ROOTINO);
 
   #if DEBUG
   //printf("their size:%lu\tour size:%lu\n", sizeof(theirFreeMap[0]), sizeof(myFreeMap[0]));
@@ -367,6 +388,8 @@ void fixBadInodeTypes (struct dinode * parent, int parentInum, int grandParentIn
   struct dirent * parentDirectory = calloc (parent->size, sizeof(struct dirent));
   int * indirectPtrs = calloc (BSIZE, sizeof(int));
 
+  //linkCountList[parentInum].inodePtr = parent;
+
   int remainingSize = parent->size;
   for (i = 0; i < NDIRECT + 1; i++) {
     if (parent->addrs[i] > 0 && i != NDIRECT) {
@@ -405,15 +428,16 @@ void fixBadInodeTypes (struct dinode * parent, int parentInum, int grandParentIn
   parentDirectory[1].name[1] = '.';
   parentDirectory[1].name[2] = '\0';
   parentDirectory[1].inum = grandParentInum;
+
   //if (type == T_DIR) {
 
   for(i=0; i < parent->size/sizeof(struct dirent); i++){
     int inum =  parentDirectory[i].inum;
-    #if DEBUG
-    printf("inum: %d\tname: %s\n", inum, parentDirectory[i].name);
-    #endif
     if(parentDirectory[i].name[0] != '.' && inum){
       int type = myInodes[inum].type;
+      #if DEBUG
+      printf("inum: %d\tname: %s\ttype:%d\n", inum, parentDirectory[i].name, type);
+      #endif
       if(isInvalidType(&myInodes[inum])){
         //invalid type
         #if DEBUG
@@ -499,4 +523,56 @@ void markAsFreeInBitMap(int addr){
 
 int isInvalidType (struct dinode * i) {
   return (i->type < 0 || i->type > 3);
+}
+
+void checkLinkCounts (struct dinode * parent, int parentInum) {
+  linkCountList[parentInum].inodePtr = parent;
+
+  if (parent->type != T_DIR) {
+    return;
+  }
+
+  int i;
+  struct dirent * parentDirectory = calloc (parent->size, sizeof(struct dirent)); //TODO free
+
+  //read in the parent directory
+  int remainingSize = parent->size;
+  for (i = 0; i < NDIRECT + 1; i++) {
+    if (parent->addrs[i] > 0 && i != NDIRECT) {
+      seekToBlock(parent->addrs[i]);
+      read(imageFd, parentDirectory + i*BSIZE,  (BSIZE < remainingSize ? BSIZE : remainingSize));
+      remainingSize -= BSIZE;
+    }
+    /*
+    if (i == NDIRECT) {
+      if(parent->addrs[i]){
+        seekToBlock(parent->addrs[i]);
+        read(imageFd, indirectPtrs, BSIZE);
+        int j;
+        for(j = 0; j < BSIZE/sizeof(int); j++){
+          if (indirectPtrs[j]) {
+            seekToBlock(indirectPtrs[j]);
+            read(imageFd, parentDirectory + (i+j)*BSIZE,  (BSIZE < remainingSize ? BSIZE : remainingSize));
+            remainingSize -= BSIZE;
+          }
+        }
+      }
+    }
+    */
+  }
+
+  /*
+  for (i = 0; i < parent->size; i++) {
+    int childInum = parentDirectory[i].inum;
+
+    int childBlockNum = myInodes[childInum];
+    struct dinode childInode;
+    seekToBlock(childBlockNum);
+    //read(imageFd, &childBlockNum,
+
+    //linkCountList[childInum] =
+  }
+  */
+
+
 }
