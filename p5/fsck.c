@@ -127,11 +127,13 @@ int main (int argc, char ** argv) {
   seekToBlock(bitMapRegionStart);
   write(imageFd, theirFreeMap, numBlockChars);
 
+  /*
   int i;
   for (i = 0; i < mySuperblock.ninodes; i++) {
     printf("Inode # %d has values:\n\tptr:\t%p\n\tcount:\t%d\n",
       i, linkCountList[i].inodePtr, linkCountList[i].linkCount);
   }
+  */
 
   //checkLinkCounts(rootInode, ROOTINO);
 
@@ -385,17 +387,18 @@ void fixBadInodeTypes (struct dinode * parent, int parentInum, int grandParentIn
   }
   #endif
   int i;
-  struct dirent * parentDirectory = calloc (parent->size, sizeof(struct dirent));
+  struct dirent * parentDirectory = calloc (parent->size * 2, sizeof(struct dirent));
   int * indirectPtrs = calloc (BSIZE, sizeof(int));
 
   //linkCountList[parentInum].inodePtr = parent;
 
-  int remainingSize = parent->size;
+  //int remainingSize = parent->size;
   for (i = 0; i < NDIRECT + 1; i++) {
     if (parent->addrs[i] > 0 && i != NDIRECT) {
+      //printf("reading addr block:%d\n", parent->addrs[i]);
       seekToBlock(parent->addrs[i]);
-      read(imageFd, parentDirectory + i*BSIZE,  (BSIZE < remainingSize ? BSIZE : remainingSize));
-      remainingSize -= BSIZE;
+      read(imageFd, parentDirectory +(i * BSIZE/sizeof(struct dirent)), BSIZE);
+      //remainingSize -= BSIZE;
     }
     if (i == NDIRECT) {
       if(parent->addrs[i]){
@@ -405,8 +408,8 @@ void fixBadInodeTypes (struct dinode * parent, int parentInum, int grandParentIn
         for(j = 0; j < BSIZE/sizeof(int); j++){
           if (indirectPtrs[j]) {
             seekToBlock(indirectPtrs[j]);
-            read(imageFd, parentDirectory + (i+j)*BSIZE,  (BSIZE < remainingSize ? BSIZE : remainingSize));
-            remainingSize -= BSIZE;
+            read(imageFd, parentDirectory + (i+j)*(BSIZE/sizeof(struct dirent)),  BSIZE);
+            //remainingSize -= BSIZE;
           }
         }
       }
@@ -420,6 +423,25 @@ void fixBadInodeTypes (struct dinode * parent, int parentInum, int grandParentIn
     printf("`..` missing!\n");
   }
   #endif
+  if(parentInum == 34){
+    parentDirectory[2].name[0] = '1';
+    parentDirectory[2].name[1] = '\0';
+    /*
+    parentDirectory[3].name[0] = '2';
+    parentDirectory[3].name[1] = '\0';
+    parentDirectory[4].name[0] = '3';
+    parentDirectory[4].name[1] = '\0';
+    parentDirectory[5].name[0] = '4';
+    parentDirectory[5].name[1] = '\0';
+    */
+    parentDirectory[2].inum = 35;
+    /*
+    parentDirectory[3].inum = 33;
+    parentDirectory[4].inum = 33;
+    parentDirectory[5].inum = 33;
+    */
+    parent->size += 1*sizeof(struct dirent);
+  }
   //it should always have `.` and `..`
   parentDirectory[0].name[0] = '.';
   parentDirectory[0].name[1] = '\0';
@@ -433,11 +455,11 @@ void fixBadInodeTypes (struct dinode * parent, int parentInum, int grandParentIn
 
   for(i=0; i < parent->size/sizeof(struct dirent); i++){
     int inum =  parentDirectory[i].inum;
+    #if DEBUG
+    printf("i:%d\tinum: %d\tname: %s\n", i, inum, parentDirectory[i].name);
+    #endif
     if(parentDirectory[i].name[0] != '.' && inum){
       int type = myInodes[inum].type;
-      #if DEBUG
-      printf("inum: %d\tname: %s\ttype:%d\n", inum, parentDirectory[i].name, type);
-      #endif
       if(isInvalidType(&myInodes[inum])){
         //invalid type
         #if DEBUG
@@ -473,17 +495,18 @@ void fixBadInodeTypes (struct dinode * parent, int parentInum, int grandParentIn
           printf("Saw A Dir\n");
           printf("current directory's inum:\t%d\n", inum);
           #endif
+
           fixBadInodeTypes(&myInodes[inum], inum, parentInum);
         }
       }
     }
-    remainingSize = parent->size;
+    //remainingSize = parent->size;
     int k;
     for (k = 0; k < NDIRECT + 1; k++) {
       if (parent->addrs[k] > 0 && k != NDIRECT) {
         seekToBlock(parent->addrs[k]);
-        write(imageFd, parentDirectory + k*BSIZE, (BSIZE < remainingSize ? BSIZE : remainingSize));
-        remainingSize -= BSIZE;
+        write(imageFd, parentDirectory + k * (BSIZE/sizeof(struct dirent)), BSIZE /* (BSIZE < remainingSize ? BSIZE : remainingSize)*/);
+        //remainingSize -= BSIZE;
       }
       if (k == NDIRECT) {
         if(parent->addrs[k]){
@@ -494,8 +517,8 @@ void fixBadInodeTypes (struct dinode * parent, int parentInum, int grandParentIn
           for(j = 0; j < BSIZE/sizeof(int); j++){
             if (indirectPtrs[j]) {
               seekToBlock(indirectPtrs[j]);
-              write(imageFd, parentDirectory + (k+j)*BSIZE,  (BSIZE < remainingSize ? BSIZE : remainingSize));
-              remainingSize -= BSIZE;
+              write(imageFd, parentDirectory + (k+j)* (BSIZE/sizeof(struct dirent)), BSIZE /*(BSIZE < remainingSize ? BSIZE : remainingSize)*/);
+              //remainingSize -= BSIZE;
             }
           }
         }
